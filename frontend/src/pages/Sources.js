@@ -1,4 +1,4 @@
-// src/pages/Sources.js - Redesigned to match the mockup style
+// src/pages/Sources.js
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link as RouterLink } from 'react-router-dom';
@@ -35,7 +35,6 @@ import {
   FaServer, 
   FaCloud, 
   FaBug, 
-  
   FaCloudDownloadAlt,
 } from 'react-icons/fa';
 
@@ -63,6 +62,13 @@ const getSourceIcon = (sourceType) => {
 const Sources = () => {
   const [searchQuery, setSearchQuery] = useState('');
   
+  // MOVED ALL COLOR HOOKS TO TOP LEVEL
+  const cardBg = useColorModeValue('white', 'gray.700');
+  const cardBorder = useColorModeValue('gray.200', 'gray.600');
+  const iconBg = useColorModeValue('gray.50', 'gray.800');
+  const iconColor = useColorModeValue('blue.500', 'blue.300'); // Added this line for the icon color
+  const cardHoverBg = useColorModeValue('gray.50', 'gray.700');
+  
   // Fetch sources
   const {
     data: sourcesData,
@@ -80,11 +86,6 @@ const Sources = () => {
     const pipelines = Array.isArray(pipelinesData.data) ? pipelinesData.data : [];
     return pipelines.filter(p => p.source_type === sourceType).length;
   };
-  
-  // Background colors
-  const cardBg = useColorModeValue('white', 'gray.700');
-  const cardBorder = useColorModeValue('gray.200', 'gray.600');
-  const iconBg = useColorModeValue('gray.50', 'gray.800');
   
   // Filter sources based on search
   const getSources = () => {
@@ -144,7 +145,7 @@ const Sources = () => {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           borderRadius="lg"
-          bg={useColorModeValue('white', 'gray.700')}
+          bg={cardBg}
           boxShadow="sm"
         />
       </InputGroup>
@@ -165,7 +166,7 @@ const Sources = () => {
               overflow="hidden"
               boxShadow="sm"
               transition="all 0.2s"
-              _hover={{ transform: "translateY(-2px)", boxShadow: "md" }}
+              _hover={{ transform: "translateY(-2px)", boxShadow: "md", bg: cardHoverBg }}
             >
               <CardBody>
                 <Flex align="center" mb={4}>
@@ -174,7 +175,7 @@ const Sources = () => {
                     mr={4}
                     borderRadius="lg"
                     bg={iconBg}
-                    color={useColorModeValue('blue.500', 'blue.300')}
+                    color={iconColor} 
                   >
                     <Icon as={SourceIcon} boxSize={6} />
                   </Box>

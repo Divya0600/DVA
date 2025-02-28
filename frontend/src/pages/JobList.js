@@ -257,12 +257,16 @@ const JobList = () => {
   }
   
   // Extract jobs and pagination info - ensure jobs is always an array
-  const jobs = Array.isArray(data?.data) ? data.data : [];
-  const totalJobs = data?.count || 0;
+  // FIXED: Correctly access the nested data structure
+  const jobsData = data?.data?.data || [];
+  const jobs = Array.isArray(jobsData) ? jobsData : [];
+  const totalJobs = data?.data?.count || 0;
   const totalPages = Math.ceil(totalJobs / pageSize);
   
   // Ensure pipelines is always an array
-  const pipelines = Array.isArray(pipelinesData?.data) ? pipelinesData.data : [];
+  // FIXED: Correctly access the nested data structure
+  const pipelinesDataList = pipelinesData?.data?.data || [];
+  const pipelines = Array.isArray(pipelinesDataList) ? pipelinesDataList : [];
   
   return (
     <Box>

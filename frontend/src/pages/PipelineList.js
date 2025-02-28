@@ -119,6 +119,13 @@ const PipelineList = () => {
     }
   );
   
+  // MOVED ALL COLOR HOOKS TO TOP LEVEL
+  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const hoverBg = useColorModeValue('gray.50', 'gray.700');
+  const cardBg = useColorModeValue('white', 'gray.800');
+  const inputBg = useColorModeValue('gray.50', 'gray.800');
+  const tableBg = useColorModeValue('gray.50', 'gray.800');
+  
   // Execute pipeline function
   const handleExecutePipeline = async (pipelineId, e) => {
     e.stopPropagation(); // Prevent row click navigation
@@ -148,11 +155,6 @@ const PipelineList = () => {
   const handleRowClick = (pipelineId) => {
     navigate(`/pipelines/${pipelineId}`);
   };
-  
-  // Colors
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const hoverBg = useColorModeValue('gray.50', 'gray.700');
-  const cardBg = useColorModeValue('white', 'gray.800');
   
   // Ensure pipelines is always an array
   const pipelines = Array.isArray(data?.data) ? data.data : [];
@@ -210,7 +212,7 @@ const PipelineList = () => {
             placeholder="Search Pipelines"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            bg={useColorModeValue('gray.50', 'gray.800')}
+            bg={inputBg}
           />
         </InputGroup>
         
@@ -327,7 +329,7 @@ const PipelineList = () => {
         >
           <Box overflowX="auto">
             <Table variant="simple">
-              <Thead bg={useColorModeValue('gray.50', 'gray.800')}>
+              <Thead bg={tableBg}>
                 <Tr>
                   <Th width="40px">#</Th>
                   <Th>Pipeline</Th>

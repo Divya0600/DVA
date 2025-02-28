@@ -98,9 +98,6 @@ For production deployment, consider:
 2. Implement the required interface methods
 3. Register the adapter in the adapter registry
 
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
 
 super user
 username: divya

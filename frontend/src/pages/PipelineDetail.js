@@ -1,4 +1,4 @@
-// src/pages/PipelineDetail.js
+// src/pages/PipelineDetail.js - Fixed data access patterns
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -104,7 +104,7 @@ const PipelineDetail = () => {
   
   // Fetch pipeline details
   const {
-    data: pipelineData,
+    data: pipelineResponse,
     isLoading,
     isError,
     error,
@@ -129,8 +129,10 @@ const PipelineDetail = () => {
           duration: 5000,
           isClosable: true,
         });
+        // Invalidate all relevant queries to refresh the UI
         queryClient.invalidateQueries(['pipeline', pipelineId]);
         queryClient.invalidateQueries(['pipeline-jobs', pipelineId]);
+        queryClient.invalidateQueries(['jobs']);
       },
       onError: (err) => {
         toast({
@@ -155,7 +157,9 @@ const PipelineDetail = () => {
           duration: 3000,
           isClosable: true,
         });
+        // Invalidate pipeline query to refresh UI
         queryClient.invalidateQueries(['pipeline', pipelineId]);
+        queryClient.invalidateQueries(['pipelines']);
       },
       onError: (err) => {
         toast({
@@ -208,8 +212,9 @@ const PipelineDetail = () => {
     );
   }
   
-  // Safely extract pipeline data from the response - if no data found, use an empty object with defaults
-  const pipeline = pipelineData?.data || {
+  // FIXED: Safely extract pipeline data from the response - directly from data without nested structure
+  // Since our API is returning data directly now
+  const pipeline = pipelineResponse?.data || {
     name: 'Pipeline Not Found',
     status: 'error',
     source_type: 'unknown',

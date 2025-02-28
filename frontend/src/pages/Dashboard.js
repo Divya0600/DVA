@@ -104,13 +104,14 @@ const Dashboard = () => {
     staleTime: 30000,
   });
 
-  // Colors
+  // Colors - MOVED ALL COLOR HOOKS TO TOP LEVEL
   const cardBg = useColorModeValue('white', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const iconBgGreen = useColorModeValue('green.50', 'green.900');
   const iconBgBlue = useColorModeValue('blue.50', 'blue.900');
   const iconBgPurple = useColorModeValue('purple.50', 'purple.900');
   const iconBgOrange = useColorModeValue('orange.50', 'orange.900');
+  const rowHoverBg = useColorModeValue('gray.50', 'gray.700');
   
   // Ensure data is arrays
   const pipelines = Array.isArray(pipelinesData?.data) ? pipelinesData.data : [];
@@ -308,7 +309,7 @@ const Dashboard = () => {
                     p={4} 
                     align="center" 
                     justify="space-between"
-                    _hover={{ bg: useColorModeValue('gray.50', 'gray.700') }}
+                    _hover={{ bg: rowHoverBg }}
                   >
                     <Flex align="center">
                       <Box mr={4}>
@@ -379,7 +380,7 @@ const Dashboard = () => {
                     p={4} 
                     align="center" 
                     justify="space-between"
-                    _hover={{ bg: useColorModeValue('gray.50', 'gray.700') }}
+                    _hover={{ bg: rowHoverBg }}
                   >
                     <HStack spacing={4}>
                       <Box>

@@ -1,7 +1,8 @@
-// src/pages/PipelineCreate.js - Redesigned to match mockups from images 1 and 3
+// src/pages/PipelineCreate.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+// FIXED: Add useQueryClient to imports
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   Button,
@@ -58,10 +59,8 @@ import {
   FaCloud,
   FaTable,
   FaCheckCircle,
-
   FaCheck
 } from 'react-icons/fa';
-
 
 import apiService from '../services/api';
 
@@ -171,7 +170,7 @@ const SelectSourceStep = ({ sources = [], selectedSource, onSelect, searchQuery,
   );
 };
 
-// Step 2: Configure Source Component (based on Image 3)
+// Step 2: Configure Source Component
 const ConfigureSourceStep = ({ sourceType, config, onChange, errors, sourceDetails }) => {
   const [showPassword, setShowPassword] = useState(false);
   
@@ -649,6 +648,8 @@ const FinalSettingsStep = ({ config, onChange, errors }) => {
 const PipelineCreate = () => {
   const navigate = useNavigate();
   const toast = useToast();
+  // FIXED: Add queryClient to get the React Query client to invalidate queries
+  const queryClient = useQueryClient();
   const [currentStep, setCurrentStep] = useState(0);
   
   // Define pipeline configuration state
@@ -712,7 +713,7 @@ const PipelineCreate = () => {
     dest.description.toLowerCase().includes(destinationSearchQuery.toLowerCase())
   );
   
-  // Pipeline creation mutation
+  // FIXED: Updated pipeline creation mutation with queryClient invalidation
   const createPipelineMutation = useMutation(
     (data) => apiService.pipelines.create(data),
     {
@@ -724,6 +725,10 @@ const PipelineCreate = () => {
           duration: 5000,
           isClosable: true,
         });
+        
+        // Invalidate the pipelines query to refresh data in the UI
+        queryClient.invalidateQueries(['pipelines']);
+        
         navigate(`/pipelines/${response.data.id}`);
       },
       onError: (error) => {
@@ -948,7 +953,7 @@ const PipelineCreate = () => {
   
   // Styling
   const cardBg = useColorModeValue('white', 'gray.700');
-  const cardBorder = useColorModeValue('gray.200', 'gray.600');
+  const cardBorder = useColorModeValue('gray.200', 'gray.700');
   
   return (
     <Box>

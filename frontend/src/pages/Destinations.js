@@ -1,4 +1,4 @@
-// src/pages/Destinations.js
+// src/pages/Destinations.js - Fixed data access patterns
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -49,7 +49,7 @@ const getDestinationIcon = (destinationType) => {
 const Destinations = () => {
   // Fetch destinations
   const {
-    data: destinationsData,
+    data: typesResponse,
     isLoading,
     isError,
     error,
@@ -57,13 +57,12 @@ const Destinations = () => {
   } = useQuery(['adapter-types'], () => apiService.pipelines.getTypes());
   
   // Count how many pipelines use each destination
-  const { data: pipelinesData } = useQuery(['pipelines'], () => apiService.pipelines.getAll());
+  const { data: pipelinesResponse } = useQuery(['pipelines'], () => apiService.pipelines.getAll());
   
   const getDestinationUsageCount = (destinationType) => {
-    if (!pipelinesData?.data) return 0;
-    
-    // Ensure it's an array before trying to filter
-    const pipelines = Array.isArray(pipelinesData.data) ? pipelinesData.data : [];
+    // FIXED: Correctly access the nested pipelines data
+    const pipelinesData = pipelinesResponse?.data?.data || [];
+    const pipelines = Array.isArray(pipelinesData) ? pipelinesData : [];
     return pipelines.filter(p => p.destination_type === destinationType).length;
   };
   
@@ -90,8 +89,8 @@ const Destinations = () => {
     );
   }
   
-  // Safely access the destination types array
-  const destinations = destinationsData?.data?.destination_types || [];
+  // FIXED: Correctly access the nested destination_types data
+  const destinations = typesResponse?.data?.destination_types || [];
   
   return (
     <Box>

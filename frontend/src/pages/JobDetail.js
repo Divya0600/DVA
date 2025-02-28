@@ -1,4 +1,4 @@
-// src/pages/JobDetail.js
+// src/pages/JobDetail.js - Fixed data access patterns
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -160,7 +160,7 @@ const JobDetail = () => {
   
   // Fetch job details including logs
   const {
-    data: jobData,
+    data: jobResponse,
     isLoading,
     isError,
     error,
@@ -169,21 +169,21 @@ const JobDetail = () => {
     ['job', jobId],
     () => apiService.jobs.get(jobId),
     {
-      refetchInterval: activeTab === 0 && ['running', 'pending'].includes(jobData?.data?.status) ? 5000 : false,
+      refetchInterval: activeTab === 0 && ['running', 'pending'].includes(jobResponse?.data?.status) ? 5000 : false,
     }
   );
   
   // Get job status
   const {
-    data: statusData,
+    data: statusResponse,
     isLoading: statusLoading,
     refetch: refetchStatus,
   } = useQuery(
     ['job-status', jobId],
     () => apiService.jobs.getStatus(jobId),
     {
-      refetchInterval: ['running', 'pending'].includes(jobData?.data?.status) ? 5000 : false,
-      enabled: !!jobData,
+      refetchInterval: ['running', 'pending'].includes(jobResponse?.data?.status) ? 5000 : false,
+      enabled: !!jobResponse,
     }
   );
   
@@ -201,6 +201,8 @@ const JobDetail = () => {
         });
         queryClient.invalidateQueries(['job', jobId]);
         queryClient.invalidateQueries(['job-status', jobId]);
+        queryClient.invalidateQueries(['jobs']);
+        queryClient.invalidateQueries(['pipeline-jobs']);
       },
       onError: (err) => {
         toast({
@@ -227,6 +229,8 @@ const JobDetail = () => {
         });
         queryClient.invalidateQueries(['job', jobId]);
         queryClient.invalidateQueries(['job-status', jobId]);
+        queryClient.invalidateQueries(['jobs']);
+        queryClient.invalidateQueries(['pipeline-jobs']);
       },
       onError: (err) => {
         toast({
@@ -278,8 +282,10 @@ const JobDetail = () => {
     );
   }
   
-  const job = jobData?.data;
-  const taskStatus = statusData?.data?.task;
+  // FIXED: Fixed job data access
+  const job = jobResponse?.data;
+  // FIXED: Fixed task status data access
+  const taskStatus = statusResponse?.data?.task;
   
   if (!job) {
     return (

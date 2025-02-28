@@ -1,5 +1,5 @@
-// src/pages/PipelineEdit.js
-import React, { useState } from 'react';
+// src/pages/PipelineEdit.js - With fixed data access and cache invalidation
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -68,8 +68,12 @@ const PipelineEdit = () => {
     ['pipeline', pipelineId],
     () => apiService.pipelines.get(pipelineId),
     {
-      onSuccess: (data) => {
-        setPipelineData(data.data);
+      onSuccess: (response) => {
+        // FIXED: Access the pipeline data directly from the response
+        const pipeline = response?.data;
+        if (pipeline) {
+          setPipelineData(pipeline);
+        }
       },
       refetchOnWindowFocus: false,
     }
@@ -93,8 +97,10 @@ const PipelineEdit = () => {
           duration: 5000,
           isClosable: true,
         });
+        // FIXED: Invalidate all related queries to refresh the UI
         queryClient.invalidateQueries(['pipeline', pipelineId]);
         queryClient.invalidateQueries(['pipelines']);
+        queryClient.invalidateQueries(['pipeline-jobs', pipelineId]);
         navigate(`/pipelines/${pipelineId}`);
       },
       onError: (err) => {
@@ -201,6 +207,7 @@ const PipelineEdit = () => {
   }
   
   // Get source and destination types
+  // FIXED: Correctly access the nested adapter types data
   const sourceTypes = adapterTypes?.data?.source_types || [];
   const destinationTypes = adapterTypes?.data?.destination_types || [];
   
