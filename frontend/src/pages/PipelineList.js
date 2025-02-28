@@ -1,5 +1,5 @@
 // src/pages/PipelineList.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
@@ -100,6 +100,7 @@ const PipelineList = () => {
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [pipelinesData, setPipelinesData] = useState([]);
   
   // Get pipelines data
   const {
@@ -116,8 +117,43 @@ const PipelineList = () => {
     }),
     {
       keepPreviousData: true,
+      staleTime: 5000, // 5 seconds
+      refetchOnWindowFocus: true,
     }
   );
+  
+  // Process the data when it changes
+  useEffect(() => {
+    if (data) {
+      console.log("Pipeline data received:", data);
+      
+      // Handle different response structures
+      let processedData = [];
+      
+      if (Array.isArray(data)) {
+        // Direct array response
+        processedData = data;
+      } else if (data.data && Array.isArray(data.data)) {
+        // Nested in data property
+        processedData = data.data;
+      } else if (data.data && data.data.data && Array.isArray(data.data.data)) {
+        // Double nested in data.data property
+        processedData = data.data.data;
+      } else if (data.results && Array.isArray(data.results)) {
+        // Results property (common in DRF pagination)
+        processedData = data.results;
+      } else if (data.data && data.data.results && Array.isArray(data.data.results)) {
+        // Nested results
+        processedData = data.data.results;
+      } else {
+        // Log the structure for debugging
+        console.warn("Unrecognized data structure:", data);
+        processedData = [];
+      }
+      
+      setPipelinesData(processedData);
+    }
+  }, [data]);
   
   // MOVED ALL COLOR HOOKS TO TOP LEVEL
   const borderColor = useColorModeValue('gray.200', 'gray.700');
@@ -156,11 +192,8 @@ const PipelineList = () => {
     navigate(`/pipelines/${pipelineId}`);
   };
   
-  // Ensure pipelines is always an array
-  const pipelines = Array.isArray(data?.data) ? data.data : [];
-  
   // Filter pipelines based on search query and status filter
-  const filteredPipelines = pipelines.filter(pipeline => {
+  const filteredPipelines = pipelinesData.filter(pipeline => {
     const matchesSearch = searchQuery === '' || 
       pipeline.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       pipeline.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -263,12 +296,20 @@ const PipelineList = () => {
           <Button
             leftIcon={<RepeatIcon />}
             variant="ghost"
-            onClick={refetch}
+            onClick={() => {
+              console.log("Manual refresh requested");
+              refetch();
+            }}
           >
             REFRESH
           </Button>
         </HStack>
       </Flex>
+      
+      {/* Debug info */}
+      <Box mb={4} p={2} bg="gray.100" borderRadius="md" fontSize="xs">
+        <Text fontWeight="bold">Data Loaded: {pipelinesData.length} pipelines</Text>
+      </Box>
       
       {/* Loading state */}
       {isLoading && (
@@ -290,7 +331,7 @@ const PipelineList = () => {
         <Card bg="red.50" borderColor="red.200">
           <CardBody>
             <Heading size="md" color="red.500">Error loading pipelines</Heading>
-            <Text mt={2}>{error.message}</Text>
+            <Text mt={2}>{error?.message || "Unknown error"}</Text>
             <Button mt={4} onClick={refetch} colorScheme="red" variant="outline">Try Again</Button>
           </CardBody>
         </Card>

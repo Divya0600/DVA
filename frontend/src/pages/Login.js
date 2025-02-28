@@ -34,7 +34,7 @@ const Login = () => {
   const location = useLocation();
   const toast = useToast();
   
-  // Colors - moved all useColorModeValue hooks to the top level
+  // Colors
   const cardBg = useColorModeValue('white', 'gray.700');
   const textColor = useColorModeValue('gray.600', 'gray.200');
   const bgColor = useColorModeValue('gray.50', 'gray.800');
@@ -105,8 +105,13 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // In this demo, any credentials will work due to mocked auth
-      const success = await login(credentials);
+      // For development, you can use any credentials or hardcode a specific test user
+      const testCredentials = {
+        username: credentials.username,
+        password: credentials.password,
+      };
+      
+      const success = await login(testCredentials);
       
       if (success) {
         toast({
@@ -160,7 +165,7 @@ const Login = () => {
           <form onSubmit={handleSubmit}>
             <Stack spacing={6}>
               <FormControl id="username" isRequired isInvalid={!!errors.username}>
-                <FormLabel>Username or Email</FormLabel>
+                <FormLabel>Username</FormLabel>
                 <Input
                   name="username"
                   type="text"
@@ -228,7 +233,7 @@ const Login = () => {
           <Divider />
           
           <Text fontSize="sm" textAlign="center" color={textColor}>
-            For demonstration, you can use any username and password
+            For development, you can use any username and password
           </Text>
         </VStack>
       </Box>

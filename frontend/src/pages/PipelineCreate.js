@@ -726,10 +726,18 @@ const PipelineCreate = () => {
           isClosable: true,
         });
         
-        // Invalidate the pipelines query to refresh data in the UI
+        // Force invalidate ALL pipeline queries to ensure UI refresh
         queryClient.invalidateQueries(['pipelines']);
+        queryClient.invalidateQueries(['pipelines-recent']);
+        queryClient.invalidateQueries(['pipeline']);
         
-        navigate(`/pipelines/${response.data.id}`);
+        // Force a refetch as well in case invalidation doesn't trigger properly
+        queryClient.refetchQueries(['pipelines']);
+        
+        // Add a delay before navigation to ensure queries have time to update
+        setTimeout(() => {
+          navigate(`/pipelines/${response.data.id}`);
+        }, 500);
       },
       onError: (error) => {
         toast({
