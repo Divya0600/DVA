@@ -5,6 +5,15 @@ import apiService from '../services/api';
 // Create context
 const AuthContext = createContext();
 
+// Mock user data (remove in production)
+const MOCK_USER = {
+  id: '1',
+  name: 'Admin User',
+  email: 'admin@example.com',
+  role: 'admin',
+  avatar: '',
+};
+
 // Provider component
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -21,7 +30,14 @@ export const AuthProvider = ({ children }) => {
       }
 
       try {
-        const response = await apiService.auth.getUser();
+        // In a real app, this would make an API call
+        // For development without backend, simulate a successful response
+        const response = await new Promise(resolve => {
+          setTimeout(() => {
+            resolve({ data: MOCK_USER });
+          }, 500);
+        });
+        
         setUser(response.data);
         setError(null);
       } catch (err) {
@@ -42,17 +58,16 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     setLoading(true);
     try {
-      const response = await apiService.auth.login(credentials);
-      const { access, refresh } = response.data;
+      // In a real app, this would use apiService.auth.login
+      // For development without backend, simulate a login
+      const mockToken = 'mock-jwt-token-' + Math.random().toString(36).substring(2);
       
-      // Store tokens
-      localStorage.setItem('token', access);
-      localStorage.setItem('refreshToken', refresh);
-      setToken(access);
+      // Store token
+      localStorage.setItem('token', mockToken);
+      setToken(mockToken);
       
-      // Get user data
-      const userResponse = await apiService.auth.getUser();
-      setUser(userResponse.data);
+      // Set user data
+      setUser(MOCK_USER);
       setError(null);
       
       return true;
@@ -68,28 +83,8 @@ export const AuthProvider = ({ children }) => {
   // Logout function
   const logout = () => {
     localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
     setToken(null);
     setUser(null);
-  };
-
-  // Refresh token function
-  const refreshToken = async () => {
-    const refresh = localStorage.getItem('refreshToken');
-    if (!refresh) return false;
-
-    try {
-      const response = await apiService.auth.refreshToken(refresh);
-      const newAccessToken = response.data.access;
-      
-      localStorage.setItem('token', newAccessToken);
-      setToken(newAccessToken);
-      return true;
-    } catch (err) {
-      console.error('Token refresh failed:', err);
-      logout();
-      return false;
-    }
   };
 
   // Context value
@@ -100,7 +95,6 @@ export const AuthProvider = ({ children }) => {
     error,
     login,
     logout,
-    refreshToken,
     isAuthenticated: !!user && !!token,
   };
 

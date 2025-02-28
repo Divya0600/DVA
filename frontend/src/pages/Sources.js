@@ -35,7 +35,7 @@ import {
   FaServer, 
   FaCloud, 
   FaBug, 
-  FaMysql,
+  
   FaCloudDownloadAlt,
 } from 'react-icons/fa';
 
@@ -47,7 +47,7 @@ const getSourceIcon = (sourceType) => {
     case 'alm':
       return FaBug;
     case 'mysql':
-      return FaMysql;
+      return FaDatabase;
     case 'postgres':
     case 'postgresql':
       return FaDatabase;

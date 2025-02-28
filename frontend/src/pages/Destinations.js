@@ -31,7 +31,8 @@ import apiService from '../services/api';
 
 // Helper to get icon for a destination type
 const getDestinationIcon = (destinationType) => {
-  switch (destinationType.toLowerCase()) {
+  // Default to database icon if destination type is not recognized
+  switch ((destinationType || '').toLowerCase()) {
     case 'alm':
       return FaBug;
     case 'jira':
@@ -60,7 +61,10 @@ const Destinations = () => {
   
   const getDestinationUsageCount = (destinationType) => {
     if (!pipelinesData?.data) return 0;
-    return pipelinesData.data.filter(p => p.destination_type === destinationType).length;
+    
+    // Ensure it's an array before trying to filter
+    const pipelines = Array.isArray(pipelinesData.data) ? pipelinesData.data : [];
+    return pipelines.filter(p => p.destination_type === destinationType).length;
   };
   
   // Card background and border colors
@@ -80,12 +84,13 @@ const Destinations = () => {
     return (
       <Box p={4}>
         <Heading size="md" color="red.500">Error loading destinations</Heading>
-        <Text>{error.message}</Text>
+        <Text>{error?.message || "Unknown error occurred"}</Text>
         <Button mt={4} onClick={refetch}>Try Again</Button>
       </Box>
     );
   }
   
+  // Safely access the destination types array
   const destinations = destinationsData?.data?.destination_types || [];
   
   return (
@@ -117,7 +122,7 @@ const Destinations = () => {
                 <Flex align="center" justify="space-between">
                   <Flex align="center">
                     <Box
-                      bg={`${destination.id === 'jira' ? 'blue' : destination.id}.50`}
+                      bg={`${destination.id === 'jira' ? 'blue' : destination.id || 'gray'}.50`}
                       p={3}
                       borderRadius="md"
                       mr={4}
@@ -173,7 +178,7 @@ const Destinations = () => {
                   <HStack mt={2}>
                     <Icon as={FaInfoCircle} color="gray.500" />
                     <Text fontSize="sm" color="gray.500">
-                      Adapter ID: {destination.id}
+                      Adapter ID: {destination.id || 'unknown'}
                     </Text>
                   </HStack>
                 </Stack>

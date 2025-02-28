@@ -1,35 +1,55 @@
-// src/components/JobsList.js
+// src/pages/JobList.js
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Box,
   Button,
+  Flex,
+  Heading,
+  HStack,
+  Icon,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  Select,
   Table,
   Thead,
   Tbody,
   Tr,
   Th,
   Td,
-  Badge,
-  Flex,
   Text,
-  IconButton,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  Tooltip,
-  Spinner,
-  HStack,
-  useToast,
+  Badge,
   Link,
+  Spinner,
+  useToast,
+  useDisclosure,
+  Drawer,
+  DrawerBody,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerOverlay,
+  DrawerContent,
+  DrawerCloseButton,
+  FormControl,
+  FormLabel,
+  VStack,
 } from '@chakra-ui/react';
 import { 
+  SearchIcon, 
   ChevronDownIcon, 
   RepeatIcon, 
   ChevronRightIcon,
-  CloseIcon 
+  TimeIcon,
+  CheckCircleIcon,
+  WarningIcon,
+  InfoIcon,
+  CloseIcon,
 } from '@chakra-ui/icons';
 
 import apiService from '../services/api';
@@ -42,7 +62,7 @@ const formatDate = (dateString) => {
 
 // Helper to format duration
 const formatDuration = (seconds) => {
-  if (!seconds) return '-';
+  if (!seconds && seconds !== 0) return '-';
   
   if (seconds < 60) {
     return `${Math.round(seconds)}s`;
@@ -54,119 +74,173 @@ const formatDuration = (seconds) => {
   return `${minutes}m ${remainingSeconds}s`;
 };
 
-// Status badge component
+// Status badge component with appropriate icon
 const JobStatusBadge = ({ status }) => {
-  let color;
+  let color, icon;
   
   switch (status) {
     case 'completed':
       color = 'green';
+      icon = CheckCircleIcon;
       break;
     case 'running':
       color = 'blue';
+      icon = TimeIcon;
       break;
     case 'pending':
       color = 'yellow';
+      icon = InfoIcon;
       break;
     case 'failed':
       color = 'red';
+      icon = WarningIcon;
       break;
     case 'cancelled':
       color = 'gray';
+      icon = CloseIcon;
       break;
     default:
       color = 'gray';
+      icon = InfoIcon;
   }
   
-  return <Badge colorScheme={color}>{status}</Badge>;
+  return (
+    <Badge colorScheme={color} px={2} py={1} borderRadius="md">
+      <HStack spacing={1}>
+        <Icon as={icon} w={3} h={3} />
+        <Text>{status.charAt(0).toUpperCase() + status.slice(1)}</Text>
+      </HStack>
+    </Badge>
+  );
 };
 
-const JobsList = ({ pipelineId }) => {
+const JobList = () => {
   const navigate = useNavigate();
   const toast = useToast();
-  const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [pipelineFilter, setPipelineFilter] = useState('');
+  const [sortOrder, setSortOrder] = useState('-created_at'); // Default: newest first
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const { isOpen, onOpen, onClose } = useDisclosure(); // For filter drawer
   
-  // Get jobs
+  // Get jobs with pagination and filters
   const {
     data,
     isLoading,
     isError,
     error,
-    refetch
+    refetch,
   } = useQuery(
-    ['pipeline-jobs', pipelineId],
-    () => apiService.pipelines.getJobs(pipelineId),
+    ['jobs', page, pageSize, searchQuery, statusFilter, pipelineFilter, sortOrder],
+    () => apiService.jobs.getAll({
+      page,
+      page_size: pageSize,
+      search: searchQuery,
+      status: statusFilter,
+      pipeline: pipelineFilter,
+      ordering: sortOrder,
+    }),
     {
-      refetchInterval: 10000, // Refresh every 10 seconds
+      keepPreviousData: true,
     }
   );
   
-  // Retry job mutation
-  const retryMutation = useMutation(
-    (jobId) => apiService.jobs.retry(jobId),
+  // Get pipelines for filter dropdown
+  const {
+    data: pipelinesData,
+    isLoading: pipelinesLoading,
+  } = useQuery(
+    ['pipelines-minimal'],
+    () => apiService.pipelines.getAll({ fields: 'id,name' }),
     {
-      onSuccess: (data) => {
-        toast({
-          title: 'Job Retry Started',
-          description: `Job ID: ${data.data.job_id}`,
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-        });
-        queryClient.invalidateQueries(['pipeline-jobs', pipelineId]);
-      },
-      onError: (err) => {
-        toast({
-          title: 'Failed to Retry Job',
-          description: err.response?.data?.message || 'An error occurred',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
+      staleTime: 5 * 60 * 1000, // 5 minutes
     }
   );
   
-  // Cancel job mutation
-  const cancelMutation = useMutation(
-    (jobId) => apiService.jobs.cancel(jobId),
-    {
-      onSuccess: () => {
-        toast({
-          title: 'Job Cancelled',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
-        queryClient.invalidateQueries(['pipeline-jobs', pipelineId]);
-      },
-      onError: (err) => {
-        toast({
-          title: 'Failed to Cancel Job',
-          description: err.response?.data?.message || 'An error occurred',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      }
-    }
-  );
-  
-  // Handle retry job
-  const handleRetryJob = (jobId) => {
-    retryMutation.mutate(jobId);
+  // Handle clearing all filters
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('');
+    setPipelineFilter('');
+    setPage(1);
+    onClose();
   };
   
-  // Handle cancel job
-  const handleCancelJob = (jobId) => {
-    if (window.confirm('Are you sure you want to cancel this job?')) {
-      cancelMutation.mutate(jobId);
+  // Handle apply filters
+  const handleApplyFilters = () => {
+    setPage(1); // Reset to first page
+    onClose();
+  };
+  
+  // Get job details and navigate
+  const handleViewJob = (jobId) => {
+    navigate(`/jobs/${jobId}`);
+  };
+  
+  // Format column value based on field
+  const formatColumnValue = (job, field) => {
+    switch (field) {
+      case 'id':
+        return (
+          <Link
+            as={RouterLink}
+            to={`/jobs/${job.id}`}
+            color="blue.500"
+            fontFamily="mono"
+            fontSize="sm"
+          >
+            {job.id.split('-')[0]}...
+          </Link>
+        );
+      case 'pipeline':
+        return (
+          <Link
+            as={RouterLink}
+            to={`/pipelines/${job.pipeline}`}
+            color="blue.600"
+            fontWeight="medium"
+          >
+            {job.pipeline_name}
+          </Link>
+        );
+      case 'status':
+        return <JobStatusBadge status={job.status} />;
+      case 'started_at':
+        return formatDate(job.started_at);
+      case 'completed_at':
+        return formatDate(job.completed_at);
+      case 'duration':
+        return formatDuration(job.duration);
+      case 'records':
+        return (
+          job.source_record_count !== null ? (
+            <HStack spacing={1}>
+              <Text>{job.source_record_count}</Text>
+              <Text color="gray.500">→</Text>
+              <Text>{job.destination_record_count || 0}</Text>
+            </HStack>
+          ) : (
+            <Text>-</Text>
+          )
+        );
+      case 'errors':
+        return (
+          job.error_count > 0 ? (
+            <Badge colorScheme="red">{job.error_count}</Badge>
+          ) : (
+            <Text>0</Text>
+          )
+        );
+      default:
+        return job[field];
     }
   };
   
   if (isLoading) {
     return (
-      <Flex justify="center" align="center" p={10}>
+      <Flex justify="center" align="center" height="400px">
         <Spinner size="xl" />
       </Flex>
     );
@@ -175,98 +249,122 @@ const JobsList = ({ pipelineId }) => {
   if (isError) {
     return (
       <Box p={4}>
-        <Text color="red.500">Error loading jobs: {error.message}</Text>
-        <Button mt={2} onClick={refetch} size="sm">Try Again</Button>
+        <Heading size="md" color="red.500">Error loading jobs</Heading>
+        <Text>{error.message}</Text>
+        <Button mt={4} onClick={refetch}>Try Again</Button>
       </Box>
     );
   }
   
-  const jobs = data?.data || [];
+  // Extract jobs and pagination info - ensure jobs is always an array
+  const jobs = Array.isArray(data?.data) ? data.data : [];
+  const totalJobs = data?.count || 0;
+  const totalPages = Math.ceil(totalJobs / pageSize);
+  
+  // Ensure pipelines is always an array
+  const pipelines = Array.isArray(pipelinesData?.data) ? pipelinesData.data : [];
   
   return (
     <Box>
-      <Flex justify="flex-end" mb={4}>
-        <Button
-          leftIcon={<RepeatIcon />}
-          size="sm"
-          onClick={refetch}
-          colorScheme="blue"
-          variant="outline"
-        >
-          Refresh
-        </Button>
+      <Flex justify="space-between" align="center" mb={6}>
+        <Heading size="lg">Jobs</Heading>
+        
+        <HStack>
+          <Button
+            leftIcon={<RepeatIcon />}
+            variant="outline"
+            onClick={refetch}
+          >
+            Refresh
+          </Button>
+        </HStack>
       </Flex>
       
-      {jobs.length === 0 ? (
-        <Flex 
-          justify="center" 
-          align="center" 
-          p={10} 
-          border="1px dashed"
-          borderColor="gray.200"
-          borderRadius="md"
-        >
-          <Text color="gray.500">No jobs have been executed for this pipeline yet.</Text>
-        </Flex>
-      ) : (
-        <Box overflowX="auto">
-          <Table variant="simple">
-            <Thead>
+      {/* Search and Filter Bar */}
+      <Flex mb={6} justify="space-between" wrap="wrap" gap={4}>
+        <InputGroup maxW="400px">
+          <InputLeftElement pointerEvents="none">
+            <SearchIcon color="gray.400" />
+          </InputLeftElement>
+          <Input
+            placeholder="Search jobs..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </InputGroup>
+        
+        <HStack spacing={2}>
+          <Button
+            leftIcon={<SearchIcon />}
+            onClick={onOpen}
+            variant="outline"
+          >
+            Filters
+            {(statusFilter || pipelineFilter) && (
+              <Badge ml={2} colorScheme="blue" borderRadius="full">
+                {(statusFilter ? 1 : 0) + (pipelineFilter ? 1 : 0)}
+              </Badge>
+            )}
+          </Button>
+          
+          <Select
+            w="180px"
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+          >
+            <option value="-created_at">Newest First</option>
+            <option value="created_at">Oldest First</option>
+            <option value="-started_at">Recently Started</option>
+            <option value="duration">Shortest Duration</option>
+            <option value="-duration">Longest Duration</option>
+          </Select>
+        </HStack>
+      </Flex>
+      
+      {/* Jobs Table */}
+      <Box overflowX="auto">
+        <Table variant="simple">
+          <Thead>
+            <Tr>
+              <Th>Job ID</Th>
+              <Th>Pipeline</Th>
+              <Th>Status</Th>
+              <Th>Started</Th>
+              <Th>Completed</Th>
+              <Th>Duration</Th>
+              <Th>Records</Th>
+              <Th>Errors</Th>
+              <Th>Actions</Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {jobs.length === 0 ? (
               <Tr>
-                <Th>Job ID</Th>
-                <Th>Status</Th>
-                <Th>Started</Th>
-                <Th>Completed</Th>
-                <Th>Duration</Th>
-                <Th>Records</Th>
-                <Th>Errors</Th>
-                <Th>Actions</Th>
+                <Td colSpan={9} textAlign="center" py={10}>
+                  <Text color="gray.500">No jobs found</Text>
+                </Td>
               </Tr>
-            </Thead>
-            <Tbody>
-              {jobs.map((job) => (
-                <Tr key={job.id}>
-                  <Td>
-                    <Link 
-                      color="blue.500" 
-                      fontFamily="mono" 
-                      fontSize="sm"
-                      onClick={() => navigate(`/jobs/${job.id}`)}
-                      cursor="pointer"
-                    >
-                      {job.id.split('-')[0]}...
-                    </Link>
-                  </Td>
-                  <Td>
-                    <JobStatusBadge status={job.status} />
-                  </Td>
-                  <Td fontSize="sm">{formatDate(job.started_at)}</Td>
-                  <Td fontSize="sm">{formatDate(job.completed_at)}</Td>
-                  <Td>{formatDuration(job.duration)}</Td>
-                  <Td>
-                    <HStack spacing={1}>
-                      <Text>{job.source_record_count || 0}</Text>
-                      <Text color="gray.500">→</Text>
-                      <Text>{job.destination_record_count || 0}</Text>
-                    </HStack>
-                  </Td>
-                  <Td>
-                    {job.error_count > 0 ? (
-                      <Badge colorScheme="red">{job.error_count}</Badge>
-                    ) : (
-                      <Text>0</Text>
-                    )}
-                  </Td>
-                  <Td>
+            ) : (
+              jobs.map((job) => (
+                <Tr key={job.id} _hover={{ bg: "gray.50" }} cursor="pointer" onClick={() => handleViewJob(job.id)}>
+                  <Td>{formatColumnValue(job, 'id')}</Td>
+                  <Td>{formatColumnValue(job, 'pipeline')}</Td>
+                  <Td>{formatColumnValue(job, 'status')}</Td>
+                  <Td>{formatColumnValue(job, 'started_at')}</Td>
+                  <Td>{formatColumnValue(job, 'completed_at')}</Td>
+                  <Td>{formatColumnValue(job, 'duration')}</Td>
+                  <Td>{formatColumnValue(job, 'records')}</Td>
+                  <Td>{formatColumnValue(job, 'errors')}</Td>
+                  <Td onClick={(e) => e.stopPropagation()}>
                     <Menu>
-                      <Tooltip label="Actions">
-                        <MenuButton
-                          as={IconButton}
-                          icon={<ChevronDownIcon />}
-                          variant="ghost"
-                          size="sm"
-                        />
-                      </Tooltip>
+                      <MenuButton
+                        as={Button}
+                        rightIcon={<ChevronDownIcon />}
+                        size="sm"
+                        variant="ghost"
+                      >
+                        Actions
+                      </MenuButton>
                       <MenuList>
                         <MenuItem
                           icon={<ChevronRightIcon />}
@@ -274,37 +372,133 @@ const JobsList = ({ pipelineId }) => {
                         >
                           View Details
                         </MenuItem>
-                        
-                        {job.status === 'failed' && (
-                          <MenuItem
-                            icon={<RepeatIcon />}
-                            onClick={() => handleRetryJob(job.id)}
-                            isDisabled={retryMutation.isLoading}
-                          >
-                            Retry Job
-                          </MenuItem>
-                        )}
-                        
-                        {(job.status === 'pending' || job.status === 'running') && (
-                          <MenuItem
-                            icon={<CloseIcon />}
-                            onClick={() => handleCancelJob(job.id)}
-                            isDisabled={cancelMutation.isLoading}
-                          >
-                            Cancel Job
-                          </MenuItem>
-                        )}
+                        <MenuItem
+                          icon={<ChevronRightIcon />}
+                          onClick={() => navigate(`/pipelines/${job.pipeline}`)}
+                        >
+                          View Pipeline
+                        </MenuItem>
                       </MenuList>
                     </Menu>
                   </Td>
                 </Tr>
+              ))
+            )}
+          </Tbody>
+        </Table>
+      </Box>
+      
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Flex justify="space-between" mt={6} align="center">
+          <Text color="gray.600">
+            Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalJobs)} of {totalJobs} jobs
+          </Text>
+          
+          <HStack>
+            <Button
+              size="sm"
+              onClick={() => setPage(page - 1)}
+              isDisabled={page === 1}
+            >
+              Previous
+            </Button>
+            
+            <Select
+              size="sm"
+              width="auto"
+              value={page}
+              onChange={(e) => setPage(parseInt(e.target.value))}
+            >
+              {[...Array(totalPages)].map((_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  Page {i + 1}
+                </option>
               ))}
-            </Tbody>
-          </Table>
-        </Box>
+            </Select>
+            
+            <Button
+              size="sm"
+              onClick={() => setPage(page + 1)}
+              isDisabled={page === totalPages}
+            >
+              Next
+            </Button>
+          </HStack>
+          
+          <Select
+            size="sm"
+            width="auto"
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(parseInt(e.target.value));
+              setPage(1); // Reset to first page
+            }}
+          >
+            <option value="10">10 per page</option>
+            <option value="20">20 per page</option>
+            <option value="50">50 per page</option>
+            <option value="100">100 per page</option>
+          </Select>
+        </Flex>
       )}
+      
+      {/* Filters Drawer */}
+      <Drawer isOpen={isOpen} placement="right" onClose={onClose}>
+        <DrawerOverlay />
+        <DrawerContent>
+          <DrawerCloseButton />
+          <DrawerHeader>Filter Jobs</DrawerHeader>
+          
+          <DrawerBody>
+            <VStack spacing={6} align="stretch">
+              <FormControl>
+                <FormLabel>Status</FormLabel>
+                <Select
+                  placeholder="All Statuses"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="">All Statuses</option>
+                  <option value="completed">Completed</option>
+                  <option value="running">Running</option>
+                  <option value="pending">Pending</option>
+                  <option value="failed">Failed</option>
+                  <option value="cancelled">Cancelled</option>
+                </Select>
+              </FormControl>
+              
+              <FormControl>
+                <FormLabel>Pipeline</FormLabel>
+                <Select
+                  placeholder="All Pipelines"
+                  value={pipelineFilter}
+                  onChange={(e) => setPipelineFilter(e.target.value)}
+                  isDisabled={pipelinesLoading}
+                >
+                  <option value="">All Pipelines</option>
+                  {pipelines.map((pipeline) => (
+                    <option key={pipeline.id} value={pipeline.id}>
+                      {pipeline.name}
+                    </option>
+                  ))}
+                </Select>
+              </FormControl>
+            </VStack>
+          </DrawerBody>
+          
+          <DrawerFooter>
+            <Button variant="outline" mr={3} onClick={handleClearFilters}>
+              Clear Filters
+            </Button>
+            <Button colorScheme="blue" onClick={handleApplyFilters}>
+              Apply Filters
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </Box>
   );
 };
 
-export default JobsList;
+export default JobList;

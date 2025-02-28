@@ -9,12 +9,15 @@ import {
   Heading,
   Text,
   VStack,
+  Icon,
   useColorModeValue,
 } from '@chakra-ui/react';
 import { ArrowBackIcon } from '@chakra-ui/icons';
+import { FiAlertTriangle } from 'react-icons/fi';
 
 const NotFound = () => {
-  const bgColor = useColorModeValue('gray.50', 'gray.800');
+  const bgColor = useColorModeValue('gray.50', 'gray.900');
+  const cardBgColor = useColorModeValue('white', 'gray.800');
   
   return (
     <Flex
@@ -25,28 +28,37 @@ const NotFound = () => {
       p={4}
     >
       <Center>
-        <VStack spacing={8} textAlign="center">
-          <Heading size="4xl" color="blue.500">404</Heading>
-          
-          <VStack spacing={2}>
-            <Heading size="xl">Page Not Found</Heading>
-            <Text fontSize="lg" color={useColorModeValue('gray.600', 'gray.400')}>
-              The page you are looking for doesn't exist or has been moved.
-            </Text>
-          </VStack>
-          
-          <Box>
+        <Box
+          bg={cardBgColor}
+          p={12}
+          borderRadius="xl"
+          boxShadow="lg"
+          maxW="md"
+          textAlign="center"
+        >
+          <VStack spacing={8}>
+            <Icon as={FiAlertTriangle} boxSize={20} color="orange.500" />
+            
+            <VStack spacing={3}>
+              <Heading size="2xl" color="orange.500">404</Heading>
+              <Heading size="xl">Page Not Found</Heading>
+              <Text fontSize="lg" color={useColorModeValue('gray.600', 'gray.400')}>
+                The page you are looking for doesn't exist or has been moved.
+              </Text>
+            </VStack>
+            
             <Button
               as={RouterLink}
               to="/dashboard"
               leftIcon={<ArrowBackIcon />}
               colorScheme="blue"
               size="lg"
+              w="full"
             >
               Back to Dashboard
             </Button>
-          </Box>
-        </VStack>
+          </VStack>
+        </Box>
       </Center>
     </Flex>
   );

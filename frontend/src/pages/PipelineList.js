@@ -1,4 +1,4 @@
-// src/pages/PipelineList.js - Redesigned to match mockup image 4
+// src/pages/PipelineList.js
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
@@ -24,12 +24,15 @@ import {
   MenuItem,
   IconButton,
   HStack,
+  VStack,
   Tooltip,
   useToast,
   Spinner,
   Card,
   CardBody,
   useColorModeValue,
+  Divider,
+  Skeleton,
 } from '@chakra-ui/react';
 import { 
   AddIcon, 
@@ -41,6 +44,7 @@ import {
   TimeIcon,
   WarningIcon,
   InfoIcon,
+  ArrowRightIcon,
 } from '@chakra-ui/icons';
 import { FaFilter } from 'react-icons/fa';
 
@@ -116,7 +120,9 @@ const PipelineList = () => {
   );
   
   // Execute pipeline function
-  const handleExecutePipeline = async (pipelineId) => {
+  const handleExecutePipeline = async (pipelineId, e) => {
+    e.stopPropagation(); // Prevent row click navigation
+    
     try {
       await apiService.pipelines.execute(pipelineId);
       toast({
@@ -138,11 +144,29 @@ const PipelineList = () => {
     }
   };
   
+  // Handle row click - navigate to pipeline details
+  const handleRowClick = (pipelineId) => {
+    navigate(`/pipelines/${pipelineId}`);
+  };
+  
   // Colors
   const borderColor = useColorModeValue('gray.200', 'gray.700');
+  const hoverBg = useColorModeValue('gray.50', 'gray.700');
+  const cardBg = useColorModeValue('white', 'gray.800');
   
-  // Make sure we have an array of pipelines
+  // Ensure pipelines is always an array
   const pipelines = Array.isArray(data?.data) ? data.data : [];
+  
+  // Filter pipelines based on search query and status filter
+  const filteredPipelines = pipelines.filter(pipeline => {
+    const matchesSearch = searchQuery === '' || 
+      pipeline.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      pipeline.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesStatus = statusFilter === '' || pipeline.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
   
   return (
     <Box>
@@ -167,7 +191,7 @@ const PipelineList = () => {
       <Flex
         mb={6}
         p={4}
-        bg={useColorModeValue('white', 'gray.700')}
+        bg={cardBg}
         borderRadius="lg"
         boxShadow="sm"
         justifyContent="space-between"
@@ -244,12 +268,23 @@ const PipelineList = () => {
         </HStack>
       </Flex>
       
-      {/* Pipelines List */}
-      {isLoading ? (
-        <Flex justify="center" align="center" height="300px">
-          <Spinner size="xl" />
-        </Flex>
-      ) : isError ? (
+      {/* Loading state */}
+      {isLoading && (
+        <Card mb={6}>
+          <CardBody>
+            <VStack spacing={4} align="stretch">
+              <Skeleton height="40px" />
+              <Divider />
+              <Skeleton height="60px" />
+              <Skeleton height="60px" />
+              <Skeleton height="60px" />
+            </VStack>
+          </CardBody>
+        </Card>
+      )}
+      
+      {/* Error state */}
+      {isError && (
         <Card bg="red.50" borderColor="red.200">
           <CardBody>
             <Heading size="md" color="red.500">Error loading pipelines</Heading>
@@ -257,11 +292,18 @@ const PipelineList = () => {
             <Button mt={4} onClick={refetch} colorScheme="red" variant="outline">Try Again</Button>
           </CardBody>
         </Card>
-      ) : pipelines.length === 0 ? (
+      )}
+      
+      {/* Empty state */}
+      {!isLoading && !isError && filteredPipelines.length === 0 && (
         <Card variant="outline" textAlign="center">
           <CardBody py={10}>
             <Heading size="md" mb={4}>No Pipelines Found</Heading>
-            <Text mb={6}>Get started by creating your first pipeline</Text>
+            <Text mb={6}>
+              {searchQuery || statusFilter ? 
+                'No pipelines match your search criteria. Try adjusting your filters.' : 
+                'Get started by creating your first pipeline'}
+            </Text>
             <Button
               as={RouterLink}
               to="/pipelines/create"
@@ -272,13 +314,16 @@ const PipelineList = () => {
             </Button>
           </CardBody>
         </Card>
-      ) : (
+      )}
+      
+      {/* Pipelines Table */}
+      {!isLoading && !isError && filteredPipelines.length > 0 && (
         <Box
           borderWidth="1px"
           borderRadius="lg"
           overflow="hidden"
           boxShadow="sm"
-          bg={useColorModeValue('white', 'gray.700')}
+          bg={cardBg}
         >
           <Box overflowX="auto">
             <Table variant="simple">
@@ -294,11 +339,11 @@ const PipelineList = () => {
                 </Tr>
               </Thead>
               <Tbody>
-                {pipelines.map((pipeline, index) => (
+                {filteredPipelines.map((pipeline, index) => (
                   <Tr key={pipeline.id} 
-                    _hover={{ bg: useColorModeValue('gray.50', 'gray.700') }}
+                    _hover={{ bg: hoverBg }}
                     cursor="pointer"
-                    onClick={() => navigate(`/pipelines/${pipeline.id}`)}
+                    onClick={() => handleRowClick(pipeline.id)}
                   >
                     <Td color="gray.500">{index + 1}</Td>
                     <Td>
@@ -329,12 +374,12 @@ const PipelineList = () => {
                       <HStack spacing={2}>
                         <Tooltip label="Run Now">
                           <IconButton
-                            icon={<RepeatIcon />}
+                            icon={<ArrowRightIcon />}
                             size="sm"
                             variant="ghost"
                             colorScheme="blue"
                             isDisabled={pipeline.status !== 'active'}
-                            onClick={() => handleExecutePipeline(pipeline.id)}
+                            onClick={(e) => handleExecutePipeline(pipeline.id, e)}
                             aria-label="Run pipeline"
                           />
                         </Tooltip>
@@ -343,7 +388,10 @@ const PipelineList = () => {
                             icon={<SettingsIcon />}
                             size="sm"
                             variant="ghost"
-                            onClick={() => navigate(`/pipelines/${pipeline.id}/edit`)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/pipelines/${pipeline.id}/edit`);
+                            }}
                             aria-label="Edit pipeline"
                           />
                         </Tooltip>

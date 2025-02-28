@@ -35,6 +35,7 @@ import {
   Badge,
   IconButton,
   Tooltip,
+  Skeleton,
 } from '@chakra-ui/react';
 import { 
   ChevronRightIcon, 
@@ -63,7 +64,10 @@ const formatDate = (dateString) => {
 const StatusBadge = ({ status }) => {
   let color, icon;
   
-  switch (status) {
+  // Add null/undefined check before accessing status
+  const statusStr = status || 'unknown';
+  
+  switch (statusStr) {
     case 'active':
       color = 'green';
       icon = CheckCircleIcon;
@@ -85,7 +89,7 @@ const StatusBadge = ({ status }) => {
     <Tag colorScheme={color} size="md">
       <HStack spacing={1}>
         <Icon as={icon} boxSize={3} />
-        <Text>{status.charAt(0).toUpperCase() + status.slice(1)}</Text>
+        <Text>{statusStr.charAt(0).toUpperCase() + statusStr.slice(1)}</Text>
       </HStack>
     </Tag>
   );
@@ -120,7 +124,7 @@ const PipelineDetail = () => {
       onSuccess: (data) => {
         toast({
           title: 'Pipeline Started',
-          description: `Job ID: ${data.data.job_id}`,
+          description: `Job ID: ${data.data?.job_id || 'unknown'}`,
           status: 'success',
           duration: 5000,
           isClosable: true,
@@ -167,9 +171,30 @@ const PipelineDetail = () => {
   
   if (isLoading) {
     return (
-      <Flex justify="center" align="center" height="400px">
-        <Spinner size="xl" />
-      </Flex>
+      <Box>
+        <Flex justify="space-between" align="center" mb={6}>
+          <Skeleton height="40px" width="200px" />
+          <HStack spacing={3}>
+            <Skeleton height="40px" width="100px" />
+            <Skeleton height="40px" width="100px" />
+          </HStack>
+        </Flex>
+        
+        <Card mb={6}>
+          <CardBody>
+            <Skeleton height="100px" />
+          </CardBody>
+        </Card>
+        
+        <Card mb={6}>
+          <CardHeader>
+            <Skeleton height="30px" width="150px" />
+          </CardHeader>
+          <CardBody>
+            <Skeleton height="150px" />
+          </CardBody>
+        </Card>
+      </Box>
     );
   }
   
@@ -177,24 +202,22 @@ const PipelineDetail = () => {
     return (
       <Box p={4}>
         <Heading size="md" color="red.500">Error loading pipeline</Heading>
-        <Text>{error.message}</Text>
+        <Text>{error?.message || "An error occurred while loading the pipeline"}</Text>
         <Button mt={4} onClick={refetch}>Try Again</Button>
       </Box>
     );
   }
   
-  const pipeline = pipelineData?.data;
-  
-  if (!pipeline) {
-    return (
-      <Box p={4}>
-        <Heading size="md">Pipeline not found</Heading>
-        <Button as={RouterLink} to="/pipelines" mt={4} leftIcon={<ChevronRightIcon />}>
-          Back to Pipelines
-        </Button>
-      </Box>
-    );
-  }
+  // Safely extract pipeline data from the response - if no data found, use an empty object with defaults
+  const pipeline = pipelineData?.data || {
+    name: 'Pipeline Not Found',
+    status: 'error',
+    source_type: 'unknown',
+    destination_type: 'unknown',
+    source_config: {},
+    destination_config: {},
+    transformation_config: {},
+  };
   
   // Handle execute button click
   const handleExecute = () => {
@@ -254,7 +277,7 @@ const PipelineDetail = () => {
             <GridItem>
               <Stat>
                 <StatLabel>Source</StatLabel>
-                <StatNumber>{pipeline.source_type.toUpperCase()}</StatNumber>
+                <StatNumber>{(pipeline.source_type || 'Unknown').toUpperCase()}</StatNumber>
                 <StatHelpText>Data retrieval</StatHelpText>
               </Stat>
             </GridItem>
@@ -262,7 +285,7 @@ const PipelineDetail = () => {
             <GridItem>
               <Stat>
                 <StatLabel>Destination</StatLabel>
-                <StatNumber>{pipeline.destination_type.toUpperCase()}</StatNumber>
+                <StatNumber>{(pipeline.destination_type || 'Unknown').toUpperCase()}</StatNumber>
                 <StatHelpText>Data upload</StatHelpText>
               </Stat>
             </GridItem>
@@ -285,9 +308,9 @@ const PipelineDetail = () => {
         </CardHeader>
         <CardBody>
           <PipelineVisualizer 
-            sourceName={pipeline.source_type} 
-            destinationName={pipeline.destination_type}
-            status={pipeline.status}
+            sourceName={pipeline.source_type || 'Unknown'} 
+            destinationName={pipeline.destination_type || 'Unknown'}
+            status={pipeline.status || 'inactive'}
           />
         </CardBody>
       </Card>
@@ -312,10 +335,10 @@ const PipelineDetail = () => {
               <GridItem>
                 <Card variant="outline">
                   <CardHeader>
-                    <Heading size="md">Source Configuration ({pipeline.source_type})</Heading>
+                    <Heading size="md">Source Configuration ({(pipeline.source_type || 'Unknown')})</Heading>
                   </CardHeader>
                   <CardBody>
-                    <JsonViewer data={pipeline.source_config} />
+                    <JsonViewer data={pipeline.source_config || {}} />
                   </CardBody>
                 </Card>
               </GridItem>
@@ -323,22 +346,22 @@ const PipelineDetail = () => {
               <GridItem>
                 <Card variant="outline">
                   <CardHeader>
-                    <Heading size="md">Destination Configuration ({pipeline.destination_type})</Heading>
+                    <Heading size="md">Destination Configuration ({(pipeline.destination_type || 'Unknown')})</Heading>
                   </CardHeader>
                   <CardBody>
-                    <JsonViewer data={pipeline.destination_config} />
+                    <JsonViewer data={pipeline.destination_config || {}} />
                   </CardBody>
                 </Card>
               </GridItem>
               
-              {Object.keys(pipeline.transformation_config || {}).length > 0 && (
+              {(pipeline.transformation_config && Object.keys(pipeline.transformation_config).length > 0) && (
                 <GridItem colSpan={2}>
                   <Card variant="outline">
                     <CardHeader>
                       <Heading size="md">Transformation Rules</Heading>
                     </CardHeader>
                     <CardBody>
-                      <JsonViewer data={pipeline.transformation_config} />
+                      <JsonViewer data={pipeline.transformation_config || {}} />
                     </CardBody>
                   </Card>
                 </GridItem>
@@ -357,11 +380,11 @@ const PipelineDetail = () => {
                   <Stack spacing={4}>
                     <Flex>
                       <Text fontWeight="bold" minWidth="200px">ID:</Text>
-                      <Text>{pipeline.id}</Text>
+                      <Text>{pipeline.id || 'N/A'}</Text>
                     </Flex>
                     <Flex>
                       <Text fontWeight="bold" minWidth="200px">Name:</Text>
-                      <Text>{pipeline.name}</Text>
+                      <Text>{pipeline.name || 'N/A'}</Text>
                     </Flex>
                     <Flex>
                       <Text fontWeight="bold" minWidth="200px">Description:</Text>
@@ -403,7 +426,7 @@ const PipelineDetail = () => {
                       <Stat>
                         <StatLabel>Success Rate</StatLabel>
                         <StatNumber>
-                          {pipeline.job_count ? 
+                          {pipeline.job_count && pipeline.success_count ? 
                             `${Math.round((pipeline.success_count / pipeline.job_count) * 100)}%` : 
                             'N/A'}
                         </StatNumber>

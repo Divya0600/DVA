@@ -1,11 +1,10 @@
 // src/pages/Login.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Button,
   Center,
-  Divider,
   FormControl,
   FormLabel,
   FormErrorMessage,
@@ -13,7 +12,6 @@ import {
   Input,
   InputGroup,
   InputRightElement,
-  Link,
   Stack,
   Text,
   VStack,
@@ -21,19 +19,37 @@ import {
   Checkbox,
   useColorModeValue,
   useToast,
+  Icon,
+  Divider,
+  Flex,
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
+import { FiDatabase, FiActivity } from 'react-icons/fi';
 
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
   
+  // Colors - moved all useColorModeValue hooks to the top level
+  const cardBg = useColorModeValue('white', 'gray.700');
+  const textColor = useColorModeValue('gray.600', 'gray.200');
+  const bgColor = useColorModeValue('gray.50', 'gray.800');
+  const brandColor = useColorModeValue('blue.600', 'blue.300');
+  const inputBgColor = useColorModeValue('white', 'gray.700');
+  
   // Get redirect path from location state, or default to dashboard
   const from = location.state?.from?.pathname || '/dashboard';
+  
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, from]);
   
   // Form state
   const [credentials, setCredentials] = useState({
@@ -89,8 +105,7 @@ const Login = () => {
     setIsLoading(true);
     
     try {
-      // In a real app, this would make an API call
-      // For this example, we'll simulate a successful login
+      // In this demo, any credentials will work due to mocked auth
       const success = await login(credentials);
       
       if (success) {
@@ -117,22 +132,22 @@ const Login = () => {
     }
   };
   
-  // Colors
-  const cardBg = useColorModeValue('white', 'gray.700');
-  const textColor = useColorModeValue('gray.600', 'gray.200');
-  
   return (
-    <Center minH="100vh" bg={useColorModeValue('gray.50', 'gray.800')}>
+    <Center minH="100vh" bg={bgColor}>
       <Box
         w={{ base: '90%', md: '450px' }}
         bg={cardBg}
         boxShadow="lg"
-        rounded="lg"
+        rounded="xl"
         p={8}
       >
-        <VStack spacing={6} align="stretch">
-          <VStack spacing={2} textAlign="center">
-            <Heading size="xl">Pipeline Migration</Heading>
+        <VStack spacing={8} align="stretch">
+          <VStack spacing={4} textAlign="center">
+            <Flex align="center" justify="center">
+              <Icon as={FiDatabase} boxSize={10} color={brandColor} mr={2} />
+              <Icon as={FiActivity} boxSize={10} color={brandColor} />
+            </Flex>
+            <Heading size="xl" color={brandColor}>Pipeline Migration</Heading>
             <Text color={textColor}>Sign in to your account</Text>
           </VStack>
           
@@ -143,15 +158,18 @@ const Login = () => {
           )}
           
           <form onSubmit={handleSubmit}>
-            <Stack spacing={4}>
+            <Stack spacing={6}>
               <FormControl id="username" isRequired isInvalid={!!errors.username}>
-                <FormLabel>Username</FormLabel>
+                <FormLabel>Username or Email</FormLabel>
                 <Input
                   name="username"
                   type="text"
                   value={credentials.username}
                   onChange={handleChange}
                   autoComplete="username"
+                  size="lg"
+                  placeholder="Enter your username"
+                  bg={inputBgColor}
                 />
                 <FormErrorMessage>{errors.username}</FormErrorMessage>
               </FormControl>
@@ -165,11 +183,12 @@ const Login = () => {
                     value={credentials.password}
                     onChange={handleChange}
                     autoComplete="current-password"
+                    size="lg"
+                    placeholder="Enter your password"
+                    bg={inputBgColor}
                   />
-                  <InputRightElement width="4.5rem">
+                  <InputRightElement height="full">
                     <Button
-                      h="1.75rem"
-                      size="sm"
                       variant="ghost"
                       onClick={() => setShowPassword(!showPassword)}
                     >
@@ -188,15 +207,16 @@ const Login = () => {
                 >
                   Remember me
                 </Checkbox>
-                <Link color="blue.500" fontSize="sm">
+                <Button variant="link" colorScheme="blue" size="sm">
                   Forgot password?
-                </Link>
+                </Button>
               </HStack>
               
               <Button
                 type="submit"
                 colorScheme="blue"
                 size="lg"
+                fontSize="md"
                 isLoading={isLoading}
                 loadingText="Signing in"
               >
@@ -208,7 +228,7 @@ const Login = () => {
           <Divider />
           
           <Text fontSize="sm" textAlign="center" color={textColor}>
-            Need an account? Contact your system administrator
+            For demonstration, you can use any username and password
           </Text>
         </VStack>
       </Box>

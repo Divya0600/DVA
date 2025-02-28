@@ -2,11 +2,14 @@
 import React from 'react';
 import { Box, Flex, VStack, Text, Icon, Center, useColorModeValue } from '@chakra-ui/react';
 import { ArrowForwardIcon } from '@chakra-ui/icons';
-import { FaDatabase, FaBug, FaJira, FaCloud, FaCloudDownloadAlt } from 'react-icons/fa';
+import { FaDatabase, FaBug, FaJira, FaCloud, FaCloudDownloadAlt, FaQuestion } from 'react-icons/fa';
 
 // Map of adapter types to icons
 const getSourceIcon = (sourceName) => {
   // Default to database icon if source type is not recognized
+  // Added null check to prevent errors
+  if (!sourceName) return FaQuestion;
+  
   switch (sourceName.toLowerCase()) {
     case 'alm':
       return FaBug; // Bug icon for ALM/defect tracking
@@ -23,6 +26,9 @@ const getSourceIcon = (sourceName) => {
 
 const getDestinationIcon = (destinationName) => {
   // Default to database icon if destination type is not recognized
+  // Added null check to prevent errors
+  if (!destinationName) return FaQuestion;
+  
   switch (destinationName.toLowerCase()) {
     case 'alm':
       return FaBug;
@@ -37,8 +43,8 @@ const getDestinationIcon = (destinationName) => {
   }
 };
 
-const PipelineVisualizer = ({ sourceName, destinationName, status }) => {
-  // Color hooks are always called in the same order now
+const PipelineVisualizer = ({ sourceName = 'unknown', destinationName = 'unknown', status = 'inactive' }) => {
+  // Color hooks - defined at the top level
   const iconColor = useColorModeValue('blue.500', 'blue.300');
   const inactiveColor = useColorModeValue('gray.300', 'gray.600');
   const lineColorActive = useColorModeValue('blue.400', 'blue.300');
@@ -50,6 +56,10 @@ const PipelineVisualizer = ({ sourceName, destinationName, status }) => {
   const sourceColor = status === 'active' ? iconColor : inactiveColor;
   const destColor = status === 'active' ? iconColor : inactiveColor;
   const lineColor = status === 'active' ? lineColorActive : lineColorInactive;
+
+  // Ensure we have valid strings
+  const sourceNameStr = sourceName || 'unknown';
+  const destinationNameStr = destinationName || 'unknown';
 
   return (
     <Flex justify="space-between" align="center" py={6} px={10}>
@@ -69,9 +79,9 @@ const PipelineVisualizer = ({ sourceName, destinationName, status }) => {
           justifyContent="center"
           alignItems="center"
         >
-          <Icon as={getSourceIcon(sourceName)} boxSize="50px" color={sourceColor} />
+          <Icon as={getSourceIcon(sourceNameStr)} boxSize="50px" color={sourceColor} />
           <Text mt={3} fontWeight="medium" textAlign="center">
-            {sourceName.toUpperCase()}
+            {sourceNameStr.toUpperCase()}
           </Text>
           <Text fontSize="sm" color="gray.500" textAlign="center">Source</Text>
         </Box>
@@ -113,9 +123,9 @@ const PipelineVisualizer = ({ sourceName, destinationName, status }) => {
           justifyContent="center"
           alignItems="center"
         >
-          <Icon as={getDestinationIcon(destinationName)} boxSize="50px" color={destColor} />
+          <Icon as={getDestinationIcon(destinationNameStr)} boxSize="50px" color={destColor} />
           <Text mt={3} fontWeight="medium" textAlign="center">
-            {destinationName.toUpperCase()}
+            {destinationNameStr.toUpperCase()}
           </Text>
           <Text fontSize="sm" color="gray.500" textAlign="center">Destination</Text>
         </Box>
