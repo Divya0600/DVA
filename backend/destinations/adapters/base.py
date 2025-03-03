@@ -52,6 +52,17 @@ class DestinationAdapterBase(ABC):
         """
         pass
     
+    @abstractmethod
+    def test_connection(self):
+        """
+        Test connection to the destination system.
+        This method is used for validating credentials before setting up the pipeline.
+        
+        Returns:
+            dict: Connection test results with status and message
+        """
+        pass
+    
     def log(self, message, level='info'):
         """
         Log a message to the job if available.

@@ -1,6 +1,5 @@
 # destinations/adapters/jira_upload.py
 import requests
-import json
 import base64
 from .base import DestinationAdapterBase
 
@@ -202,3 +201,42 @@ class JiraDestinationAdapter(DestinationAdapterBase):
                 return None
                 
         return value
+        
+    def test_connection(self):
+        """
+        Test connection to Jira.
+        This method is used for validating credentials before setting up the pipeline.
+        
+        Returns:
+            dict: Connection test results with status and message
+        """
+        try:
+            if self.authenticate():
+                # Check if the project exists
+                project_key = self.config['project_key']
+                response = self.session.get(
+                    f"{self.config['base_url']}/rest/api/2/project/{project_key}",
+                    verify=self.config.get('verify_ssl', True)
+                )
+                
+                if response.status_code == 200:
+                    project_data = response.json()
+                    return {
+                        "status": "success",
+                        "message": f"Successfully connected to Jira project {project_data.get('name', project_key)}"
+                    }
+                else:
+                    return {
+                        "status": "warning",
+                        "message": f"Authentication successful, but project {project_key} not found or not accessible."
+                    }
+            else:
+                return {
+                    "status": "error", 
+                    "message": "Authentication failed. Check credentials."
+                }
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"Connection test failed: {str(e)}"
+            }

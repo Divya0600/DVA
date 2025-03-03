@@ -40,83 +40,38 @@ api.interceptors.response.use(
   }
 );
 
-// API service with real endpoints
+// API service with endpoints
 const apiService = {
   // Authentication
   auth: {
-    login: (credentials) => {
-      console.log('Login attempt with:', credentials);
-      return api.post('/auth/token/', credentials);
-    },
-    refreshToken: (refresh) => {
-      return api.post('/auth/token/refresh/', { refresh });
-    },
-    getUser: () => {
-      return api.get('/auth/user/');
-    },
+    login: (credentials) => api.post('/auth/token/', credentials),
+    refreshToken: (refresh) => api.post('/auth/token/refresh/', { refresh }),
+    getUser: () => api.get('/auth/user/'),
   },
-
-
   
   // Pipelines
   pipelines: {
-    getAll: (params) => {
-      console.log("Fetching all pipelines with params:", params);
-      return api.get('/pipelines/', { params })
-        .then(response => {
-          console.log("Pipeline API response:", response);
-          return response;
-        })
-        .catch(error => {
-          console.error("Pipeline API error:", error);
-          throw error;
-        });
-    },
-    get: (id) => {
-      return api.get(`/pipelines/${id}/`);
-    },
-    create: (data) => {
-      console.log("Creating pipeline with data:", data);
-      return api.post('/pipelines/', data)
-        .then(response => {
-          console.log("Pipeline creation response:", response);
-          return response;
-        });
-    },
-    update: (id, data) => {
-      return api.put(`/pipelines/${id}/`, data);
-    },
-    delete: (id) => {
-      return api.delete(`/pipelines/${id}/`);
-    },
-    execute: (id) => {
-      return api.post(`/pipelines/${id}/execute/`);
-    },
-    getJobs: (id) => {
-      return api.get(`/pipelines/${id}/jobs/`);
-    },
-    getTypes: () => {
-      return api.get('/pipelines/types/');
-    },
+    getAll: (params) => api.get('/pipelines/', { params }),
+    get: (id) => api.get(`/pipelines/${id}/`),
+    create: (data) => api.post('/pipelines/', data),
+    update: (id, data) => api.put(`/pipelines/${id}/`, data),
+    delete: (id) => api.delete(`/pipelines/${id}/`),
+    execute: (id) => api.post(`/pipelines/${id}/execute/`),
+    getJobs: (id) => api.get(`/pipelines/${id}/jobs/`),
+    getTypes: () => api.get('/pipelines/types/'),
+    
+    // Connection testing endpoints
+    testSourceConnection: (data) => api.post('/pipelines/test-source-connection/', data),
+    testDestinationConnection: (data) => api.post('/pipelines/test-destination-connection/', data),
   },
   
   // Jobs
   jobs: {
-    getAll: (params) => {
-      return api.get('/jobs/', { params });
-    },
-    get: (id) => {
-      return api.get(`/jobs/${id}/`);
-    },
-    retry: (id) => {
-      return api.post(`/jobs/${id}/retry/`);
-    },
-    cancel: (id) => {
-      return api.post(`/jobs/${id}/cancel/`);
-    },
-    getStatus: (id) => {
-      return api.get(`/jobs/${id}/status/`);
-    },
+    getAll: (params) => api.get('/jobs/', { params }),
+    get: (id) => api.get(`/jobs/${id}/`),
+    retry: (id) => api.post(`/jobs/${id}/retry/`),
+    cancel: (id) => api.post(`/jobs/${id}/cancel/`),
+    getStatus: (id) => api.get(`/jobs/${id}/status/`),
   }
 };
 

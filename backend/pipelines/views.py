@@ -1,10 +1,15 @@
 # pipelines/views.py
 from django.utils import timezone
 from rest_framework import viewsets, status, filters
-from rest_framework.decorators import action
-from rest_framework.response import Response
+
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
+
+
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from common.adapter_loader import load_source_adapter, load_destination_adapter
+
 
 from .models import Pipeline
 from .serializers import PipelineSerializer, PipelineDetailSerializer
@@ -100,3 +105,75 @@ class PipelineViewSet(viewsets.ModelViewSet):
             'source_types': source_types,
             'destination_types': destination_types
         })
+    
+    @action(detail=False, methods=['post'], url_path='test-source-connection')
+    def test_source_connection(self, request):
+        """
+        Test connection to a source system with provided credentials.
+        
+        This endpoint allows testing a source connection before creating a pipeline.
+        """
+        try:
+            source_type = request.data.get('source_type')
+            source_config = request.data.get('source_config', {})
+            
+            if not source_type:
+                return Response(
+                    {"error": "source_type is required"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Load the source adapter without a job instance
+            adapter = load_source_adapter(source_type, source_config)
+            
+            # Test the connection
+            result = adapter.test_connection()
+            
+            return Response(result)
+            
+        except ValueError as e:
+            return Response(
+                {"status": "error", "message": str(e)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {"status": "error", "message": f"Unexpected error: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=False, methods=['post'], url_path='test-destination-connection')
+    def test_destination_connection(self, request):
+        """
+        Test connection to a destination system with provided credentials.
+        
+        This endpoint allows testing a destination connection before creating a pipeline.
+        """
+        try:
+            destination_type = request.data.get('destination_type')
+            destination_config = request.data.get('destination_config', {})
+            
+            if not destination_type:
+                return Response(
+                    {"error": "destination_type is required"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Load the destination adapter without a job instance
+            adapter = load_destination_adapter(destination_type, destination_config)
+            
+            # Test the connection
+            result = adapter.test_connection()
+            
+            return Response(result)
+            
+        except ValueError as e:
+            return Response(
+                {"status": "error", "message": str(e)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            return Response(
+                {"status": "error", "message": f"Unexpected error: {str(e)}"}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
