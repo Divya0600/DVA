@@ -1,6 +1,6 @@
 // src/components/JsonViewer.js
 import React, { useState } from 'react';
-import { Box, Button, Code, Text, useClipboard, Flex, useColorModeValue } from '@chakra-ui/react';
+import { Box, Button, Text, useClipboard, Flex, useColorModeValue } from '@chakra-ui/react';
 import { CopyIcon, CheckIcon } from '@chakra-ui/icons';
 
 const JsonViewer = ({ data, maxHeight = '400px' }) => {

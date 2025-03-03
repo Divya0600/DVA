@@ -8,7 +8,6 @@ import {
   CardBody,
   CardHeader,
   Divider,
-  Flex,
   Heading,
   Link,
   List,
@@ -34,9 +33,7 @@ import {
 } from '@chakra-ui/icons';
 import { 
   FaBook, 
-  FaCode, 
   FaVideo, 
-  FaFileAlt, 
   FaLifeRing, 
   FaExchangeAlt,
   FaServer,

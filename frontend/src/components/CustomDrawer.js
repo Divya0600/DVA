@@ -1,5 +1,5 @@
 // src/components/CustomDrawer.js
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
   Box, 
   useColorModeValue, 
@@ -30,7 +30,7 @@ const CustomDrawer = ({ children, navItems }) => {
   const isMobile = useBreakpointValue({ base: true, md: false });
   
   // Close drawer when route changes on mobile
-  useEffect(() => {
+  React.useEffect(() => {
     if (isMobile) {
       onClose();
     }

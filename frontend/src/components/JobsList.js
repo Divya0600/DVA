@@ -1,5 +1,5 @@
 // src/components/JobsList.js
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -221,7 +221,7 @@ const JobsList = ({ pipelineId }) => {
                 <Th>Duration</Th>
                 <Th>Records</Th>
                 <Th>Errors</Th>
-                <Th>Actions</Th>
+                <Th width="100px">Actions</Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -258,45 +258,46 @@ const JobsList = ({ pipelineId }) => {
                       <Text>0</Text>
                     )}
                   </Td>
-                  <Td>
-                    <Menu>
-                      <Tooltip label="Actions">
-                        <MenuButton
-                          as={IconButton}
-                          icon={<ChevronDownIcon />}
-                          variant="ghost"
+                  <Td onClick={(e) => e.stopPropagation()}>
+                    <HStack spacing={2}>
+                      <Tooltip label="View Details">
+                        <IconButton
+                          icon={<ChevronRightIcon />}
                           size="sm"
+                          variant="ghost"
+                          onClick={() => navigate(`/jobs/${job.id}`)}
+                          aria-label="View job details"
                         />
                       </Tooltip>
-                      <MenuList>
-                        <MenuItem
-                          icon={<ChevronRightIcon />}
-                          onClick={() => navigate(`/jobs/${job.id}`)}
-                        >
-                          View Details
-                        </MenuItem>
-                        
-                        {job.status === 'failed' && (
-                          <MenuItem
+                      
+                      {job.status === 'failed' && (
+                        <Tooltip label="Retry Job">
+                          <IconButton
                             icon={<RepeatIcon />}
+                            size="sm"
+                            variant="ghost"
+                            colorScheme="blue"
                             onClick={() => handleRetryJob(job.id)}
                             isDisabled={retryMutation.isLoading}
-                          >
-                            Retry Job
-                          </MenuItem>
-                        )}
-                        
-                        {(job.status === 'pending' || job.status === 'running') && (
-                          <MenuItem
+                            aria-label="Retry job"
+                          />
+                        </Tooltip>
+                      )}
+                      
+                      {(job.status === 'pending' || job.status === 'running') && (
+                        <Tooltip label="Cancel Job">
+                          <IconButton
                             icon={<CloseIcon />}
+                            size="sm"
+                            variant="ghost"
+                            colorScheme="red"
                             onClick={() => handleCancelJob(job.id)}
                             isDisabled={cancelMutation.isLoading}
-                          >
-                            Cancel Job
-                          </MenuItem>
-                        )}
-                      </MenuList>
-                    </Menu>
+                            aria-label="Cancel job"
+                          />
+                        </Tooltip>
+                      )}
+                    </HStack>
                   </Td>
                 </Tr>
               ))}

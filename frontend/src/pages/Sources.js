@@ -8,20 +8,16 @@ import {
   Card,
   CardBody,
   Flex,
-  Grid,
   Heading,
   HStack,
   Icon,
   Input,
   InputGroup,
   InputLeftElement,
-  Link,
   SimpleGrid,
   Stack,
   Tag,
   Text,
-  Tooltip,
-  VStack,
   useColorModeValue,
   Spinner,
 } from '@chakra-ui/react';
@@ -72,10 +68,7 @@ const Sources = () => {
   // Fetch sources
   const {
     data: sourcesData,
-    isLoading,
-    isError,
-    error,
-    refetch,
+    isLoading
   } = useQuery(['adapter-types'], () => apiService.pipelines.getTypes());
   
   // Count how many pipelines use each source
@@ -87,21 +80,9 @@ const Sources = () => {
     return pipelines.filter(p => p.source_type === sourceType).length;
   };
   
-  // Filter sources based on search
+  // Get sources from API data
   const getSources = () => {
-    if (!sourcesData?.data?.source_types) {
-      // Fallback mock data if API doesn't return sources
-      return [
-        { id: 'mysql', name: 'MySQL', description: 'MySQL Database' },
-        { id: 'postgres', name: 'PostgreSQL', description: 'PostgreSQL Database' },
-        { id: 'mongodb', name: 'MongoDB', description: 'MongoDB Database' },
-        { id: 'alm', name: 'ALM', description: 'HP ALM Defect Tracking' },
-        { id: 'salesforce', name: 'Salesforce', description: 'Salesforce CRM' },
-        { id: 'rest', name: 'REST API', description: 'Generic REST API' },
-      ];
-    }
-    
-    return sourcesData.data.source_types;
+    return sourcesData?.data?.source_types || [];
   };
   
   const sources = getSources().filter(source => 
@@ -204,7 +185,7 @@ const Sources = () => {
                       </>
                     )}
                     
-                    {source.id === 'mysql' || source.id === 'postgres' || source.id === 'mongodb' && (
+                    {(source.id === 'mysql' || source.id === 'postgres' || source.id === 'mongodb') && (
                       <>
                         <Tag size="sm" colorScheme="blue">Database</Tag>
                         <Tag size="sm" colorScheme="blue">Tables</Tag>

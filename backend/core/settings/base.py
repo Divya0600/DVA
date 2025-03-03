@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'django_celery_results',  # Add this line for Celery results backend
     
     # Project apps
     'pipelines',
@@ -33,7 +34,7 @@ INSTALLED_APPS = [
     'destinations',
     'jobs',
     'common',
-    'authentication',  # Add this line
+    'authentication',
 ]
 
 MIDDLEWARE = [
@@ -121,6 +122,7 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
 
 CORS_ALLOW_CREDENTIALS = True
+
 # Celery settings
 CELERY_BROKER_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
 CELERY_RESULT_BACKEND = 'django-db'

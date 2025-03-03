@@ -16,8 +16,6 @@ import {
   HStack,
   Icon,
   Link,
-  List,
-  ListItem,
   Stack,
   Stat,
   StatLabel,
@@ -28,7 +26,6 @@ import {
   TabList,
   TabPanels,
   TabPanel,
-  Tag,
   Text,
   useToast,
   Spinner,
@@ -49,12 +46,10 @@ import {
 } from '@chakra-ui/react';
 import { 
   ChevronRightIcon, 
-  TimeIcon, 
   RepeatIcon,
   WarningIcon,
   InfoIcon,
   CheckCircleIcon,
-  TimeIcon as ClockIcon,
   CloseIcon,
   ExternalLinkIcon,
 } from '@chakra-ui/icons';
@@ -94,7 +89,7 @@ const JobStatusBadge = ({ status }) => {
       break;
     case 'running':
       color = 'blue';
-      icon = ClockIcon;
+      icon = InfoIcon;
       break;
     case 'pending':
       color = 'yellow';
@@ -169,20 +164,25 @@ const JobDetail = () => {
     ['job', jobId],
     () => apiService.jobs.get(jobId),
     {
-      refetchInterval: activeTab === 0 && ['running', 'pending'].includes(jobResponse?.data?.status) ? 5000 : false,
+      refetchInterval: (data) => {
+        const jobStatus = data?.data?.status;
+        return activeTab === 0 && ['running', 'pending'].includes(jobStatus) ? 5000 : false;
+      },
     }
   );
   
   // Get job status
   const {
     data: statusResponse,
-    isLoading: statusLoading,
     refetch: refetchStatus,
   } = useQuery(
     ['job-status', jobId],
     () => apiService.jobs.getStatus(jobId),
     {
-      refetchInterval: ['running', 'pending'].includes(jobResponse?.data?.status) ? 5000 : false,
+      refetchInterval: (data) => {
+        const jobStatus = jobResponse?.data?.status;
+        return ['running', 'pending'].includes(jobStatus) ? 5000 : false;
+      },
       enabled: !!jobResponse,
     }
   );
@@ -282,9 +282,9 @@ const JobDetail = () => {
     );
   }
   
-  // FIXED: Fixed job data access
+  // Get job data from response
   const job = jobResponse?.data;
-  // FIXED: Fixed task status data access
+  // Get task status from response
   const taskStatus = statusResponse?.data?.task;
   
   if (!job) {
@@ -359,71 +359,65 @@ const JobDetail = () => {
       <Card mb={6}>
         <CardBody>
           <Grid templateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }} gap={6}>
-            <GridItem>
-              <VStack align="start" spacing={1}>
-                <Text color="gray.500" fontSize="sm">Pipeline</Text>
-                <Link
-                  as={RouterLink}
-                  to={`/pipelines/${job.pipeline}`}
-                  fontWeight="bold"
-                  fontSize="lg"
-                  color="blue.500"
-                >
-                  {job.pipeline_name}
-                </Link>
-                <HStack>
-                  <Text color="gray.500" fontSize="sm">Source:</Text>
-                  <Text fontSize="sm">{job.pipeline_source_type}</Text>
-                </HStack>
-                <HStack>
-                  <Text color="gray.500" fontSize="sm">Destination:</Text>
-                  <Text fontSize="sm">{job.pipeline_destination_type}</Text>
-                </HStack>
-              </VStack>
-            </GridItem>
+            <VStack align="start" spacing={1}>
+              <Text color="gray.500" fontSize="sm">Pipeline</Text>
+              <Link
+                as={RouterLink}
+                to={`/pipelines/${job.pipeline}`}
+                fontWeight="bold"
+                fontSize="lg"
+                color="blue.500"
+              >
+                {job.pipeline_name}
+              </Link>
+              <HStack>
+                <Text color="gray.500" fontSize="sm">Source:</Text>
+                <Text fontSize="sm">{job.pipeline_source_type}</Text>
+              </HStack>
+              <HStack>
+                <Text color="gray.500" fontSize="sm">Destination:</Text>
+                <Text fontSize="sm">{job.pipeline_destination_type}</Text>
+              </HStack>
+            </VStack>
             
-            <GridItem>
-              <VStack align="start" spacing={1}>
-                <Text color="gray.500" fontSize="sm">Timing</Text>
-                <HStack>
-                  <Icon as={ClockIcon} color="blue.500" />
-                  <Text fontWeight="bold" fontSize="lg">{duration}</Text>
-                </HStack>
-                <HStack>
-                  <Text color="gray.500" fontSize="sm">Started:</Text>
-                  <Text fontSize="sm">{startTime}</Text>
-                </HStack>
-                <HStack>
-                  <Text color="gray.500" fontSize="sm">Completed:</Text>
-                  <Text fontSize="sm">{endTime}</Text>
-                </HStack>
-              </VStack>
-            </GridItem>
+            <VStack align="start" spacing={1}>
+              <Text color="gray.500" fontSize="sm">Timing</Text>
+              <HStack>
+                <Icon as={InfoIcon} color="blue.500" />
+                <Text fontWeight="bold" fontSize="lg">{duration}</Text>
+              </HStack>
+              <HStack>
+                <Text color="gray.500" fontSize="sm">Started:</Text>
+                <Text fontSize="sm">{startTime}</Text>
+              </HStack>
+              <HStack>
+                <Text color="gray.500" fontSize="sm">Completed:</Text>
+                <Text fontSize="sm">{endTime}</Text>
+              </HStack>
+            </VStack>
             
-            <GridItem>
-              <VStack align="start" spacing={1}>
-                <Text color="gray.500" fontSize="sm">Records</Text>
+            <VStack align="start" spacing={1}>
+              <Text color="gray.500" fontSize="sm">Records</Text>
+              <HStack>
+                <Text fontWeight="bold" fontSize="lg">
+                  {job.source_record_count !== null ? job.source_record_count : '-'} → {job.destination_record_count !== null ? job.destination_record_count : '-'}
+                </Text>
+              </HStack>
+              <HStack>
+                <Text color="gray.500" fontSize="sm">Source Records:</Text>
+                <Text fontSize="sm">{job.source_record_count !== null ? job.source_record_count : '-'}</Text>
+              </HStack>
+              <HStack>
+                <Text color="gray.500" fontSize="sm">Destination Records:</Text>
+                <Text fontSize="sm">{job.destination_record_count !== null ? job.destination_record_count : '-'}</Text>
+              </HStack>
+              {job.error_count > 0 && (
                 <HStack>
-                  <Text fontWeight="bold" fontSize="lg">
-                    {job.source_record_count !== null ? job.source_record_count : '-'} → {job.destination_record_count !== null ? job.destination_record_count : '-'}
-                  </Text>
+                  <Text color="red.500" fontSize="sm">Errors:</Text>
+                  <Text fontSize="sm" color="red.500">{job.error_count}</Text>
                 </HStack>
-                <HStack>
-                  <Text color="gray.500" fontSize="sm">Source Records:</Text>
-                  <Text fontSize="sm">{job.source_record_count !== null ? job.source_record_count : '-'}</Text>
-                </HStack>
-                <HStack>
-                  <Text color="gray.500" fontSize="sm">Destination Records:</Text>
-                  <Text fontSize="sm">{job.destination_record_count !== null ? job.destination_record_count : '-'}</Text>
-                </HStack>
-                {job.error_count > 0 && (
-                  <HStack>
-                    <Text color="red.500" fontSize="sm">Errors:</Text>
-                    <Text fontSize="sm" color="red.500">{job.error_count}</Text>
-                  </HStack>
-                )}
-              </VStack>
-            </GridItem>
+              )}
+            </VStack>
           </Grid>
         </CardBody>
       </Card>
@@ -586,53 +580,49 @@ const JobDetail = () => {
           {/* Results Tab */}
           <TabPanel p={4}>
             <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6}>
-              <GridItem>
-                <Card>
-                  <CardHeader>
-                    <Heading size="sm">Source Data Summary</Heading>
-                  </CardHeader>
-                  <CardBody>
-                    <Stack spacing={4}>
-                      <Stat>
-                        <StatLabel>Records Retrieved</StatLabel>
-                        <StatNumber>{job.source_record_count !== null ? job.source_record_count : '-'}</StatNumber>
-                        <StatHelpText>From {job.pipeline_source_type}</StatHelpText>
-                      </Stat>
-                      
-                      {taskStatus && taskStatus.info && taskStatus.info.source_details && (
-                        <Box>
-                          <Text fontWeight="medium" mb={2}>Additional Details</Text>
-                          <JsonViewer data={taskStatus.info.source_details} />
-                        </Box>
-                      )}
-                    </Stack>
-                  </CardBody>
-                </Card>
-              </GridItem>
+              <Card>
+                <CardHeader>
+                  <Heading size="sm">Source Data Summary</Heading>
+                </CardHeader>
+                <CardBody>
+                  <Stack spacing={4}>
+                    <Stat>
+                      <StatLabel>Records Retrieved</StatLabel>
+                      <StatNumber>{job.source_record_count !== null ? job.source_record_count : '-'}</StatNumber>
+                      <StatHelpText>From {job.pipeline_source_type}</StatHelpText>
+                    </Stat>
+                    
+                    {taskStatus && taskStatus.info && taskStatus.info.source_details && (
+                      <Box>
+                        <Text fontWeight="medium" mb={2}>Additional Details</Text>
+                        <JsonViewer data={taskStatus.info.source_details} />
+                      </Box>
+                    )}
+                  </Stack>
+                </CardBody>
+              </Card>
               
-              <GridItem>
-                <Card>
-                  <CardHeader>
-                    <Heading size="sm">Destination Data Summary</Heading>
-                  </CardHeader>
-                  <CardBody>
-                    <Stack spacing={4}>
-                      <Stat>
-                        <StatLabel>Records Uploaded</StatLabel>
-                        <StatNumber>{job.destination_record_count !== null ? job.destination_record_count : '-'}</StatNumber>
-                        <StatHelpText>To {job.pipeline_destination_type}</StatHelpText>
-                      </Stat>
-                      
-                      {taskStatus && taskStatus.info && taskStatus.info.destination_details && (
-                        <Box>
-                          <Text fontWeight="medium" mb={2}>Additional Details</Text>
-                          <JsonViewer data={taskStatus.info.destination_details} />
-                        </Box>
-                      )}
-                    </Stack>
-                  </CardBody>
-                </Card>
-              </GridItem>
+              <Card>
+                <CardHeader>
+                  <Heading size="sm">Destination Data Summary</Heading>
+                </CardHeader>
+                <CardBody>
+                  <Stack spacing={4}>
+                    <Stat>
+                      <StatLabel>Records Uploaded</StatLabel>
+                      <StatNumber>{job.destination_record_count !== null ? job.destination_record_count : '-'}</StatNumber>
+                      <StatHelpText>To {job.pipeline_destination_type}</StatHelpText>
+                    </Stat>
+                    
+                    {taskStatus && taskStatus.info && taskStatus.info.destination_details && (
+                      <Box>
+                        <Text fontWeight="medium" mb={2}>Additional Details</Text>
+                        <JsonViewer data={taskStatus.info.destination_details} />
+                      </Box>
+                    )}
+                  </Stack>
+                </CardBody>
+              </Card>
               
               {/* Success Rate Card */}
               <GridItem colSpan={{ md: 2 }}>
@@ -691,93 +681,89 @@ const JobDetail = () => {
           {/* Details Tab */}
           <TabPanel p={4}>
             <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6}>
-              <GridItem>
-                <Card>
-                  <CardHeader>
-                    <Heading size="sm">Job Information</Heading>
-                  </CardHeader>
-                  <CardBody>
+              <Card>
+                <CardHeader>
+                  <Heading size="sm">Job Information</Heading>
+                </CardHeader>
+                <CardBody>
+                  <Stack spacing={3} divider={<Divider />}>
+                    <Flex justify="space-between">
+                      <Text color="gray.600">Job ID</Text>
+                      <Code>{job.id}</Code>
+                    </Flex>
+                    
+                    <Flex justify="space-between">
+                      <Text color="gray.600">Task ID</Text>
+                      <Code>{job.task_id || 'None'}</Code>
+                    </Flex>
+                    
+                    <Flex justify="space-between">
+                      <Text color="gray.600">Pipeline</Text>
+                      <Link 
+                        as={RouterLink} 
+                        to={`/pipelines/${job.pipeline}`}
+                        color="blue.500"
+                      >
+                        {job.pipeline_name}
+                      </Link>
+                    </Flex>
+                    
+                    <Flex justify="space-between">
+                      <Text color="gray.600">Created</Text>
+                      <Text>{formatDate(job.created_at)}</Text>
+                    </Flex>
+                    
+                    <Flex justify="space-between">
+                      <Text color="gray.600">Started</Text>
+                      <Text>{formatDate(job.started_at)}</Text>
+                    </Flex>
+                    
+                    <Flex justify="space-between">
+                      <Text color="gray.600">Completed</Text>
+                      <Text>{formatDate(job.completed_at)}</Text>
+                    </Flex>
+                  </Stack>
+                </CardBody>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <Heading size="sm">Task Status</Heading>
+                </CardHeader>
+                <CardBody>
+                  {taskStatus ? (
                     <Stack spacing={3} divider={<Divider />}>
                       <Flex justify="space-between">
-                        <Text color="gray.600">Job ID</Text>
-                        <Code>{job.id}</Code>
-                      </Flex>
-                      
-                      <Flex justify="space-between">
                         <Text color="gray.600">Task ID</Text>
-                        <Code>{job.task_id || 'None'}</Code>
+                        <Code>{taskStatus.task_id || 'None'}</Code>
                       </Flex>
                       
                       <Flex justify="space-between">
-                        <Text color="gray.600">Pipeline</Text>
-                        <Link 
-                          as={RouterLink} 
-                          to={`/pipelines/${job.pipeline}`}
-                          color="blue.500"
-                        >
-                          {job.pipeline_name}
-                        </Link>
+                        <Text color="gray.600">State</Text>
+                        <Badge colorScheme={
+                          taskStatus.state === 'SUCCESS' ? 'green' :
+                          taskStatus.state === 'FAILURE' ? 'red' :
+                          taskStatus.state === 'PENDING' ? 'yellow' :
+                          taskStatus.state === 'STARTED' ? 'blue' : 'gray'
+                        }>
+                          {taskStatus.state}
+                        </Badge>
                       </Flex>
                       
-                      <Flex justify="space-between">
-                        <Text color="gray.600">Created</Text>
-                        <Text>{formatDate(job.created_at)}</Text>
-                      </Flex>
-                      
-                      <Flex justify="space-between">
-                        <Text color="gray.600">Started</Text>
-                        <Text>{formatDate(job.started_at)}</Text>
-                      </Flex>
-                      
-                      <Flex justify="space-between">
-                        <Text color="gray.600">Completed</Text>
-                        <Text>{formatDate(job.completed_at)}</Text>
-                      </Flex>
-                    </Stack>
-                  </CardBody>
-                </Card>
-              </GridItem>
-              
-              <GridItem>
-                <Card>
-                  <CardHeader>
-                    <Heading size="sm">Task Status</Heading>
-                  </CardHeader>
-                  <CardBody>
-                    {taskStatus ? (
-                      <Stack spacing={3} divider={<Divider />}>
-                        <Flex justify="space-between">
-                          <Text color="gray.600">Task ID</Text>
-                          <Code>{taskStatus.task_id || 'None'}</Code>
-                        </Flex>
-                        
-                        <Flex justify="space-between">
-                          <Text color="gray.600">State</Text>
-                          <Badge colorScheme={
-                            taskStatus.state === 'SUCCESS' ? 'green' :
-                            taskStatus.state === 'FAILURE' ? 'red' :
-                            taskStatus.state === 'PENDING' ? 'yellow' :
-                            taskStatus.state === 'STARTED' ? 'blue' : 'gray'
-                          }>
-                            {taskStatus.state}
-                          </Badge>
-                        </Flex>
-                        
-                        {taskStatus.info && (
-                          <Box>
-                            <Text color="gray.600" mb={2}>Task Result</Text>
-                            <Box bg="gray.50" p={3} borderRadius="md">
-                              <JsonViewer data={taskStatus.info} />
-                            </Box>
+                      {taskStatus.info && (
+                        <Box>
+                          <Text color="gray.600" mb={2}>Task Result</Text>
+                          <Box bg="gray.50" p={3} borderRadius="md">
+                            <JsonViewer data={taskStatus.info} />
                           </Box>
-                        )}
-                      </Stack>
-                    ) : (
-                      <Text color="gray.500">No task status information available</Text>
-                    )}
-                  </CardBody>
-                </Card>
-              </GridItem>
+                        </Box>
+                      )}
+                    </Stack>
+                  ) : (
+                    <Text color="gray.500">No task status information available</Text>
+                  )}
+                </CardBody>
+              </Card>
             </Grid>
           </TabPanel>
         </TabPanels>

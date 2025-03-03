@@ -12,18 +12,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // For development purposes - set this to true to use mock auth instead of real backend auth
-  const useMockAuth = false;
-  
-  // Mock user data (for development only)
-  const MOCK_USER = {
-    id: '1',
-    username: 'admin',
-    email: 'admin@example.com',
-    first_name: 'Admin',
-    last_name: 'User',
-    is_staff: true,
-  };
+  // No mock auth - always use the real backend
 
   // Load user on initial render or token change
   useEffect(() => {
@@ -34,14 +23,9 @@ export const AuthProvider = ({ children }) => {
       }
 
       try {
-        if (useMockAuth) {
-          // For development, just set the mock user
-          setUser(MOCK_USER);
-        } else {
-          // In production, call the API to get user data
-          const response = await apiService.auth.getUser();
-          setUser(response.data);
-        }
+        // Call the API to get user data
+        const response = await apiService.auth.getUser();
+        setUser(response.data);
         setError(null);
       } catch (err) {
         console.error('Failed to load user:', err);
@@ -56,42 +40,27 @@ export const AuthProvider = ({ children }) => {
     }
 
     loadUser();
-  }, [token]);
+  }, [token]); // Remove unused dependencies
 
   // Login function
   const login = async (credentials) => {
     setLoading(true);
     try {
-      if (useMockAuth) {
-        // For development without backend, simulate a login
-        const mockToken = 'mock-jwt-token-' + Math.random().toString(36).substring(2);
-        
-        // Store token
-        localStorage.setItem('token', mockToken);
-        setToken(mockToken);
-        
-        // Set user data
-        setUser(MOCK_USER);
-        setError(null);
-        
-        return true;
-      } else {
-        // For production with real backend
-        const response = await apiService.auth.login(credentials);
-        const { access, refresh } = response.data;
-        
-        // Store tokens
-        localStorage.setItem('token', access);
-        localStorage.setItem('refreshToken', refresh);
-        setToken(access);
-        
-        // Get user data
-        const userResponse = await apiService.auth.getUser();
-        setUser(userResponse.data);
-        setError(null);
-        
-        return true;
-      }
+      // Always use the real backend
+      const response = await apiService.auth.login(credentials);
+      const { access, refresh } = response.data;
+      
+      // Store tokens
+      localStorage.setItem('token', access);
+      localStorage.setItem('refreshToken', refresh);
+      setToken(access);
+      
+      // Get user data
+      const userResponse = await apiService.auth.getUser();
+      setUser(userResponse.data);
+      setError(null);
+      
+      return true;
     } catch (err) {
       console.error('Login failed:', err);
       setError(err.response?.data?.detail || 'Login failed');

@@ -20,17 +20,21 @@ const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
   
-  const bgColor = useColorModeValue('white', 'gray.800');
+  // Move all useColorModeValue calls to the top level,
+  // never inside conditional blocks
+  const bgColor = useColorModeValue('gray.50', 'gray.900');
+  const cardBg = useColorModeValue('white', 'gray.800');
   const spinnerColor = useColorModeValue('blue.500', 'blue.300');
+  const emptyColor = useColorModeValue('gray.200', 'gray.700');
   
   // Show loading spinner while auth state is being determined
   if (loading) {
     return (
-      <Center h="100vh" bg={useColorModeValue('gray.50', 'gray.900')}>
+      <Center h="100vh" bg={bgColor}>
         <Box 
           p={8} 
           borderRadius="lg" 
-          bg={bgColor}
+          bg={cardBg}
           boxShadow="lg"
           textAlign="center"
         >
@@ -40,7 +44,7 @@ const ProtectedRoute = ({ children }) => {
               color={spinnerColor} 
               thickness="4px" 
               speed="0.65s"
-              emptyColor={useColorModeValue('gray.200', 'gray.700')}
+              emptyColor={emptyColor}
             />
             <Text fontSize="lg">Authenticating...</Text>
           </VStack>

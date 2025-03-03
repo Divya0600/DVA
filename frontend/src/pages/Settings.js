@@ -7,7 +7,6 @@ import {
   CardBody,
   CardHeader,
   Divider,
-  Flex,
   FormControl,
   FormLabel,
   FormHelperText,
@@ -22,7 +21,6 @@ import {
   Tabs,
   Text,
   VStack,
-  HStack,
   NumberInput,
   NumberInputField,
   NumberInputStepper,
@@ -172,7 +170,7 @@ const Settings = () => {
                       onChange={(e) => handleGeneralChange('enableNotifications', e.target.checked)}
                       mr={3}
                     />
-                    <FormLabel htmlFor="enable-notifications" mb={0}>
+                    <FormLabel htmlFor="enable-notifications" mb="0">
                       Enable Browser Notifications
                     </FormLabel>
                   </FormControl>
@@ -302,7 +300,7 @@ const Settings = () => {
                       onChange={(e) => handleNotificationChange('emailNotifications', e.target.checked)}
                       mr={3}
                     />
-                    <FormLabel htmlFor="email-notifications" mb={0}>
+                    <FormLabel htmlFor="email-notifications" mb="0">
                       Enable Email Notifications
                     </FormLabel>
                   </FormControl>
@@ -328,7 +326,7 @@ const Settings = () => {
                           onChange={(e) => handleNotificationChange('failureNotificationsOnly', e.target.checked)}
                           mr={3}
                         />
-                        <FormLabel htmlFor="failure-only" mb={0}>
+                        <FormLabel htmlFor="failure-only" mb="0">
                           Only notify on failures
                         </FormLabel>
                       </FormControl>
@@ -344,7 +342,7 @@ const Settings = () => {
                       onChange={(e) => handleNotificationChange('slackNotifications', e.target.checked)}
                       mr={3}
                     />
-                    <FormLabel htmlFor="slack-notifications" mb={0}>
+                    <FormLabel htmlFor="slack-notifications" mb="0">
                       Enable Slack Notifications
                     </FormLabel>
                   </FormControl>
@@ -385,7 +383,7 @@ const Settings = () => {
               <CardBody>
                 <VStack spacing={6} align="stretch">
                   <FormControl display="flex" alignItems="center">
-                    <FormLabel htmlFor="color-mode" mb={0}>
+                    <FormLabel htmlFor="color-mode" mb="0">
                       Color Mode
                     </FormLabel>
                     <Switch

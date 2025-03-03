@@ -1,9 +1,6 @@
 // src/services/api.js
 import axios from 'axios';
 
-// For development purposes - set this to true to bypass authentication
-const bypassAuthForDevelopment = false;
-
 // Create axios instance with base URL
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000/api',
@@ -17,12 +14,6 @@ const api = axios.create({
 // Request interceptor for adding the auth token
 api.interceptors.request.use(
   config => {
-    // For development mode, we can add a dummy auth header if bypassing auth
-    if (bypassAuthForDevelopment) {
-      config.headers['X-Development-Mode'] = 'true';
-      return config;
-    }
-    
     const token = localStorage.getItem('token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
@@ -40,22 +31,10 @@ api.interceptors.response.use(
   error => {
     // Handle 401 Unauthorized errors
     if (error.response && error.response.status === 401) {
-      // Don't redirect to login in dev mode if bypassing auth
-      if (!bypassAuthForDevelopment) {
-        // Clear local storage and redirect to login
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        window.location = '/login';
-      } else {
-        console.warn('401 Unauthorized error in development mode - continuing anyway');
-        // For development, return a mock successful response to avoid breaking the app
-        return Promise.resolve({
-          data: {
-            // Return mock data based on the requested endpoint
-            data: []
-          }
-        });
-      }
+      // Clear local storage and redirect to login
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      window.location = '/login';
     }
     return Promise.reject(error);
   }
