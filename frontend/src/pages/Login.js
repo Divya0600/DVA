@@ -77,6 +77,32 @@ const Login = () => {
       }));
     }
   };
+
+  const debugAuth = () => {
+    console.log('Debug mode activated');
+    // Test direct API call
+    fetch('http://localhost:8000/api/auth/token/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: credentials.username,
+        password: credentials.password,
+      }),
+    })
+      .then(response => {
+        console.log('Status:', response.status);
+        return response.json().catch(() => ({}));
+      })
+      .then(data => {
+        console.log('Response data:', data);
+      })
+      .catch(error => {
+        console.error('Fetch error:', error);
+      });
+  };
+  
   
   // Validate form
   const validateForm = () => {
@@ -216,6 +242,7 @@ const Login = () => {
                   Forgot password?
                 </Button>
               </HStack>
+
               
               <Button
                 type="submit"
@@ -230,6 +257,15 @@ const Login = () => {
             </Stack>
           </form>
           
+          <Button 
+            onClick={debugAuth}
+            size="sm"
+            variant="ghost"
+            colorScheme="gray"
+            mt={2}
+          >
+            Debug Auth
+          </Button>
           <Divider />
           
           <Text fontSize="sm" textAlign="center" color={textColor}>

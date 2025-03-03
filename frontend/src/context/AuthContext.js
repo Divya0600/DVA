@@ -45,9 +45,12 @@ export const AuthProvider = ({ children }) => {
   // Login function
   const login = async (credentials) => {
     setLoading(true);
+    console.log('Login function called with:', credentials);
     try {
-      // Always use the real backend
+      console.log('Making API request to login endpoint');
       const response = await apiService.auth.login(credentials);
+      console.log('Login response received:', response);
+      
       const { access, refresh } = response.data;
       
       // Store tokens
@@ -56,13 +59,26 @@ export const AuthProvider = ({ children }) => {
       setToken(access);
       
       // Get user data
+      console.log('Getting user data with token');
       const userResponse = await apiService.auth.getUser();
+      console.log('User data received:', userResponse);
+      
       setUser(userResponse.data);
       setError(null);
       
       return true;
     } catch (err) {
       console.error('Login failed:', err);
+      // More detailed error logging
+      if (err.response) {
+        console.error('Error response:', err.response.data);
+        console.error('Error status:', err.response.status);
+      } else if (err.request) {
+        console.error('No response received:', err.request);
+      } else {
+        console.error('Error details:', err.message);
+      }
+      
       setError(err.response?.data?.detail || 'Login failed');
       return false;
     } finally {

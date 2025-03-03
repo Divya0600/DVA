@@ -100,9 +100,9 @@ For production deployment, consider:
 
 
 super user
-username: divya
+username: superdivya
 password:password@123
 
 user
-username: Divyauser
-password:Divya@123
+username: userdivya
+password:password@234

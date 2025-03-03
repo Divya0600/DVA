@@ -45,6 +45,7 @@ const apiService = {
   // Authentication
   auth: {
     login: (credentials) => {
+      console.log('Login attempt with:', credentials);
       return api.post('/auth/token/', credentials);
     },
     refreshToken: (refresh) => {
@@ -54,6 +55,8 @@ const apiService = {
       return api.get('/auth/user/');
     },
   },
+
+
   
   // Pipelines
   pipelines: {
