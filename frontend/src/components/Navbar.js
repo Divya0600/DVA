@@ -1,50 +1,94 @@
 // src/components/Navbar.js
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import {
-  Box,
-  Flex,
-  HStack,
-  IconButton,
-  Button,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  MenuDivider,
-  useColorModeValue,
-  Text,
+  AppBar,
   Avatar,
-  useColorMode,
+  Box,
+  Breadcrumbs,
+  Button,
+  Divider,
+  Drawer,
+  IconButton,
+  InputBase,
+  Link,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Menu,
+  MenuItem,
+  Toolbar,
   Tooltip,
-  InputGroup,
-  Input,
-  InputLeftElement,
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  Spacer,
-} from '@chakra-ui/react';
+  Typography,
+  alpha,
+  styled,
+  useTheme
+} from '@mui/material';
 import {
-  MoonIcon,
-  SunIcon,
-  SearchIcon,
-  BellIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-} from '@chakra-ui/icons';
+  Menu as MenuIcon,
+  Search as SearchIcon,
+  Notifications as NotificationsIcon,
+  AccountCircle,
+  Brightness4 as DarkModeIcon,
+  Brightness7 as LightModeIcon,
+  ChevronRight as ChevronRightIcon,
+  Help as HelpIcon,
+  Settings as SettingsIcon,
+  Logout as LogoutIcon,
+} from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
-import { useLocation } from 'react-router-dom';
+
+// Styled search component
+const Search = styled('div')(({ theme }) => ({
+  position: 'relative',
+  borderRadius: theme.shape.borderRadius,
+  backgroundColor: alpha(theme.palette.common.white, 0.15),
+  '&:hover': {
+    backgroundColor: alpha(theme.palette.common.white, 0.25),
+  },
+  marginRight: theme.spacing(2),
+  marginLeft: 0,
+  width: '100%',
+  [theme.breakpoints.up('sm')]: {
+    marginLeft: theme.spacing(3),
+    width: 'auto',
+  },
+}));
+
+const SearchIconWrapper = styled('div')(({ theme }) => ({
+  padding: theme.spacing(0, 2),
+  height: '100%',
+  position: 'absolute',
+  pointerEvents: 'none',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+}));
+
+const StyledInputBase = styled(InputBase)(({ theme }) => ({
+  color: 'inherit',
+  '& .MuiInputBase-input': {
+    padding: theme.spacing(1, 1, 1, 0),
+    paddingLeft: `calc(1em + ${theme.spacing(4)})`,
+    transition: theme.transitions.create('width'),
+    width: '100%',
+    [theme.breakpoints.up('md')]: {
+      width: '20ch',
+    },
+  },
+}));
 
 const Navbar = () => {
-  const { colorMode, toggleColorMode } = useColorMode();
+  const theme = useTheme();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Colors
-  const bgColor = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  // State for user menu
+  const [anchorEl, setAnchorEl] = useState(null);
+  const isMenuOpen = Boolean(anchorEl);
   
   // Generate breadcrumbs based on current path
   const generateBreadcrumbs = () => {
@@ -57,14 +101,13 @@ const Navbar = () => {
     
     let currentPath = '';
     
-    // For each segment, build the path and create a breadcrumb
     pathSegments.forEach((segment, index) => {
       currentPath += `/${segment}`;
       
-      // Format the label (capitalize first letter, remove hyphens)
+      // Format the label
       let label = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ');
       
-      // Special case for IDs (e.g., UUIDs)
+      // Special case for IDs or specific routes
       if (
         (segment.includes('-') && segment.length > 10) || 
         (index > 0 && ['edit', 'create'].includes(segment))
@@ -96,106 +139,155 @@ const Navbar = () => {
   
   const breadcrumbs = generateBreadcrumbs();
   
-  // Item color variables - moved outside the render JSX
-  const activeItemColor = "blue.500";
-  const inactiveItemColor = "gray.500";
+  // Handle user menu
+  const handleProfileMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+  
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+  
+  const handleLogout = () => {
+    handleMenuClose();
+    logout();
+  };
+  
+  const menuId = 'primary-account-menu';
+  const renderMenu = (
+    <Menu
+      anchorEl={anchorEl}
+      anchorOrigin={{
+        vertical: 'bottom',
+        horizontal: 'right',
+      }}
+      id={menuId}
+      keepMounted
+      transformOrigin={{
+        vertical: 'top',
+        horizontal: 'right',
+      }}
+      open={isMenuOpen}
+      onClose={handleMenuClose}
+    >
+      <Box sx={{ px: 2, py: 1 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+          {user?.name || 'User'}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          {user?.email || user?.username || 'user@example.com'}
+        </Typography>
+      </Box>
+      <Divider />
+      <MenuItem onClick={() => { handleMenuClose(); navigate('/settings'); }}>
+        <ListItemIcon>
+          <SettingsIcon fontSize="small" />
+        </ListItemIcon>
+        <ListItemText>Settings</ListItemText>
+      </MenuItem>
+      <MenuItem onClick={() => { handleMenuClose(); navigate('/help'); }}>
+        <ListItemIcon>
+          <HelpIcon fontSize="small" />
+        </ListItemIcon>
+        <ListItemText>Help</ListItemText>
+      </MenuItem>
+      <Divider />
+      <MenuItem onClick={handleLogout}>
+        <ListItemIcon>
+          <LogoutIcon fontSize="small" />
+        </ListItemIcon>
+        <ListItemText>Sign Out</ListItemText>
+      </MenuItem>
+    </Menu>
+  );
 
   return (
-    <Box
-      as="header"
-      bg={bgColor}
-      borderBottom="1px"
-      borderBottomColor={borderColor}
-      py={2}
-      px={4}
-      position="sticky"
-      top="0"
-      zIndex="10"
-    >
-      <Flex alignItems="center" justifyContent="space-between">
-        {/* Breadcrumbs */}
-        <Breadcrumb separator={<ChevronRightIcon color="gray.500" />}>
-          {breadcrumbs.map((crumb, index) => (
-            <BreadcrumbItem key={index} isCurrentPage={crumb.isLast}>
-              <BreadcrumbLink 
-                href="#" 
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(crumb.path);
+    <Box sx={{ flexGrow: 1 }}>
+      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+        <Toolbar>
+          {/* Breadcrumbs */}
+          <Breadcrumbs 
+            aria-label="breadcrumb" 
+            separator={<ChevronRightIcon fontSize="small" />}
+            sx={{ 
+              display: { xs: 'none', sm: 'flex' }, 
+              flexGrow: 1
+            }}
+          >
+            {breadcrumbs.map((crumb, index) => (
+              <Link
+                key={index}
+                component={RouterLink}
+                to={crumb.path}
+                color={crumb.isLast ? 'primary.main' : 'inherit'}
+                sx={{ 
+                  fontWeight: crumb.isLast ? 'bold' : 'normal',
+                  '&:hover': { textDecoration: 'none' }
                 }}
-                fontWeight={crumb.isLast ? "semibold" : "normal"}
-                color={crumb.isLast ? activeItemColor : inactiveItemColor}
               >
                 {crumb.label}
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-          ))}
-        </Breadcrumb>
-        
-        <Spacer />
-        
-        {/* Search */}
-        <InputGroup maxW="400px" mx={4} display={{ base: 'none', md: 'flex' }}>
-          <InputLeftElement pointerEvents="none">
-            <SearchIcon color="gray.400" />
-          </InputLeftElement>
-          <Input placeholder="Search..." variant="filled" size="sm" />
-        </InputGroup>
-        
-        <Spacer />
-        
-        {/* Right section with user controls */}
-        <HStack spacing={3}>
-          {/* Theme toggle */}
-          <Tooltip label={colorMode === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}>
-            <IconButton
-              icon={colorMode === 'light' ? <MoonIcon /> : <SunIcon />}
-              variant="ghost"
-              onClick={toggleColorMode}
-              aria-label="Toggle color mode"
-              size="sm"
-            />
-          </Tooltip>
+              </Link>
+            ))}
+          </Breadcrumbs>
           
-          {/* Notifications */}
-          <Tooltip label="Notifications">
-            <IconButton
-              icon={<BellIcon />}
-              variant="ghost"
-              aria-label="Notifications"
-              size="sm"
-            />
-          </Tooltip>
+          <Typography
+            variant="h6"
+            noWrap
+            component="div"
+            sx={{ display: { xs: 'flex', sm: 'none' }, flexGrow: 1 }}
+          >
+            Pipeline Migration
+          </Typography>
           
-          {/* User menu */}
-          <Menu>
-            <MenuButton
-              as={Button}
-              variant="ghost"
-              rightIcon={<ChevronDownIcon />}
-              size="sm"
-            >
-              <HStack>
-                <Avatar
-                  size="sm"
-                  name={user?.name || "User"}
-                  src={user?.avatar}
-                  bg="blue.500"
-                />
-                <Text display={{ base: 'none', md: 'block' }}>
-                  {user?.name || "User"}
-                </Text>
-              </HStack>
-            </MenuButton>
-            <MenuList>
-              <MenuItem onClick={() => navigate('/settings')}>Settings</MenuItem>
-              <MenuItem onClick={() => navigate('/help')}>Help</MenuItem>
-              <MenuDivider />
-              <MenuItem onClick={logout}>Sign Out</MenuItem>
-            </MenuList>
-          </Menu>
-        </HStack>
-      </Flex>
+          {/* Search box */}
+          <Search sx={{ display: { xs: 'none', md: 'flex' } }}>
+            <SearchIconWrapper>
+              <SearchIcon />
+            </SearchIconWrapper>
+            <StyledInputBase
+              placeholder="Search…"
+              inputProps={{ 'aria-label': 'search' }}
+            />
+          </Search>
+          
+          <Box sx={{ display: 'flex' }}>
+            {/* Notifications */}
+            <Tooltip title="Notifications">
+              <IconButton color="inherit">
+                <NotificationsIcon />
+              </IconButton>
+            </Tooltip>
+            
+            {/* Theme toggle */}
+            <Tooltip title="Toggle light/dark theme">
+              <IconButton color="inherit">
+                {theme.palette.mode === 'dark' ? <LightModeIcon /> : <DarkModeIcon />}
+              </IconButton>
+            </Tooltip>
+            
+            {/* User menu */}
+            <Tooltip title="Account settings">
+              <IconButton
+                edge="end"
+                aria-label="account of current user"
+                aria-controls={menuId}
+                aria-haspopup="true"
+                onClick={handleProfileMenuOpen}
+                color="inherit"
+              >
+                {user?.avatar ? (
+                  <Avatar src={user.avatar} alt={user.name || 'User'} sx={{ width: 32, height: 32 }} />
+                ) : (
+                  <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+                    {user?.name?.charAt(0) || user?.username?.charAt(0) || 'U'}
+                  </Avatar>
+                )}
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Toolbar>
+      </AppBar>
+      {renderMenu}
     </Box>
   );
 };

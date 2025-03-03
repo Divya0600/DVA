@@ -2,47 +2,51 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
+  Alert,
   Box,
   Button,
-  Center,
-  FormControl,
-  FormLabel,
-  FormErrorMessage,
-  Heading,
-  Input,
-  InputGroup,
-  InputRightElement,
-  Stack,
-  Text,
-  VStack,
-  HStack,
+  Card,
+  CardContent,
   Checkbox,
-  useColorModeValue,
-  useToast,
-  Icon,
   Divider,
-  Flex,
-} from '@chakra-ui/react';
-import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
-import { FiDatabase, FiActivity } from 'react-icons/fi';
+  FormControlLabel,
+  IconButton,
+  InputAdornment,
+  Link,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+  useTheme
+} from '@mui/material';
+import {
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
+  SwapHoriz as SwapHorizIcon,
+  Storage as StorageIcon,
+  Login as LoginIcon
+} from '@mui/icons-material';
 
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, error: authError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const toast = useToast();
-  
-  // Colors
-  const cardBg = useColorModeValue('white', 'gray.700');
-  const textColor = useColorModeValue('gray.600', 'gray.200');
-  const bgColor = useColorModeValue('gray.50', 'gray.800');
-  const brandColor = useColorModeValue('blue.600', 'blue.300');
-  const inputBgColor = useColorModeValue('white', 'gray.700');
+  const theme = useTheme();
   
   // Get redirect path from location state, or default to dashboard
   const from = location.state?.from?.pathname || '/dashboard';
+  
+  // Form state
+  const [credentials, setCredentials] = useState({
+    username: '',
+    password: '',
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Redirect if already authenticated
   useEffect(() => {
@@ -51,17 +55,7 @@ const Login = () => {
     }
   }, [isAuthenticated, navigate, from]);
   
-  // Form state
-  const [credentials, setCredentials] = useState({
-    username: '',
-    password: '',
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-  
-  // Update form fields
+  // Handle input change
   const handleChange = (e) => {
     const { name, value } = e.target;
     setCredentials((prev) => ({
@@ -69,7 +63,7 @@ const Login = () => {
       [name]: value,
     }));
     
-    // Clear error when typing
+    // Clear errors when typing
     if (errors[name]) {
       setErrors((prev) => ({
         ...prev,
@@ -77,32 +71,16 @@ const Login = () => {
       }));
     }
   };
-
-  const debugAuth = () => {
-    console.log('Debug mode activated');
-    // Test direct API call
-    fetch('http://localhost:8000/api/auth/token/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        username: credentials.username,
-        password: credentials.password,
-      }),
-    })
-      .then(response => {
-        console.log('Status:', response.status);
-        return response.json().catch(() => ({}));
-      })
-      .then(data => {
-        console.log('Response data:', data);
-      })
-      .catch(error => {
-        console.error('Fetch error:', error);
-      });
+  
+  // Toggle password visibility
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
   
+  // Toggle remember me
+  const handleRememberMeChange = (e) => {
+    setRememberMe(e.target.checked);
+  };
   
   // Validate form
   const validateForm = () => {
@@ -128,152 +106,161 @@ const Login = () => {
       return;
     }
     
-    setIsLoading(true);
+    setIsSubmitting(true);
     
     try {
-      // For development, you can use any credentials or hardcode a specific test user
-      const testCredentials = {
-        username: credentials.username,
-        password: credentials.password,
-      };
+      const success = await login(credentials);
       
-      const success = await login(testCredentials);
-      
-      if (success) {
-        toast({
-          title: 'Login Successful',
-          description: 'Welcome to the Pipeline Migration System',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
-        
-        navigate(from, { replace: true });
-      } else {
+      if (!success) {
         setErrors({
-          login: 'Invalid username or password',
+          general: 'Invalid username or password',
         });
       }
     } catch (error) {
       setErrors({
-        login: error.message || 'An error occurred during login',
+        general: error.message || 'An error occurred during login',
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
   
   return (
-    <Center minH="100vh" bg={bgColor}>
-      <Box
-        w={{ base: '90%', md: '450px' }}
-        bg={cardBg}
-        boxShadow="lg"
-        rounded="xl"
-        p={8}
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        minHeight: '100vh',
+        bgcolor: 'background.default',
+        p: 2
+      }}
+    >
+      <Paper
+        elevation={6}
+        sx={{
+          borderRadius: 2,
+          maxWidth: 450,
+          width: '100%',
+          overflow: 'hidden'
+        }}
       >
-        <VStack spacing={8} align="stretch">
-          <VStack spacing={4} textAlign="center">
-            <Flex align="center" justify="center">
-              <Icon as={FiDatabase} boxSize={10} color={brandColor} mr={2} />
-              <Icon as={FiActivity} boxSize={10} color={brandColor} />
-            </Flex>
-            <Heading size="xl" color={brandColor}>Pipeline Migration</Heading>
-            <Text color={textColor}>Sign in to your account</Text>
-          </VStack>
-          
-          {errors.login && (
-            <Box p={3} bg="red.50" color="red.500" borderRadius="md">
-              {errors.login}
-            </Box>
-          )}
-          
+        {/* Header with brand color */}
+        <Box 
+          sx={{ 
+            p: 3, 
+            bgcolor: 'primary.main', 
+            color: 'primary.contrastText',
+            textAlign: 'center'
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+            <StorageIcon sx={{ fontSize: 40, mr: 1 }} />
+            <SwapHorizIcon sx={{ fontSize: 40 }} />
+          </Box>
+          <Typography variant="h4" component="h1" gutterBottom>
+            Pipeline Migration
+          </Typography>
+          <Typography variant="subtitle1">
+            Sign in to your account
+          </Typography>
+        </Box>
+        
+        <CardContent sx={{ p: 4 }}>
           <form onSubmit={handleSubmit}>
-            <Stack spacing={6}>
-              <FormControl id="username" isRequired isInvalid={!!errors.username}>
-                <FormLabel>Username</FormLabel>
-                <Input
-                  name="username"
-                  type="text"
-                  value={credentials.username}
-                  onChange={handleChange}
-                  autoComplete="username"
-                  size="lg"
-                  placeholder="Enter your username"
-                  bg={inputBgColor}
+            <Stack spacing={3}>
+              {/* Show any auth errors */}
+              {(errors.general || authError) && (
+                <Alert severity="error">
+                  {errors.general || authError}
+                </Alert>
+              )}
+              
+              {/* Username field */}
+              <TextField
+                fullWidth
+                label="Username"
+                name="username"
+                value={credentials.username}
+                onChange={handleChange}
+                error={!!errors.username}
+                helperText={errors.username}
+                autoComplete="username"
+                autoFocus
+              />
+              
+              {/* Password field */}
+              <TextField
+                fullWidth
+                label="Password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                value={credentials.password}
+                onChange={handleChange}
+                error={!!errors.password}
+                helperText={errors.password}
+                autoComplete="current-password"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={togglePasswordVisibility}
+                        edge="end"
+                        aria-label="toggle password visibility"
+                      >
+                        {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              
+              {/* Remember me & Forgot password */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={rememberMe}
+                      onChange={handleRememberMeChange}
+                      color="primary"
+                    />
+                  }
+                  label="Remember me"
                 />
-                <FormErrorMessage>{errors.username}</FormErrorMessage>
-              </FormControl>
-              
-              <FormControl id="password" isRequired isInvalid={!!errors.password}>
-                <FormLabel>Password</FormLabel>
-                <InputGroup>
-                  <Input
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={credentials.password}
-                    onChange={handleChange}
-                    autoComplete="current-password"
-                    size="lg"
-                    placeholder="Enter your password"
-                    bg={inputBgColor}
-                  />
-                  <InputRightElement height="full">
-                    <Button
-                      variant="ghost"
-                      onClick={() => setShowPassword(!showPassword)}
-                    >
-                      {showPassword ? <ViewOffIcon /> : <ViewIcon />}
-                    </Button>
-                  </InputRightElement>
-                </InputGroup>
-                <FormErrorMessage>{errors.password}</FormErrorMessage>
-              </FormControl>
-              
-              <HStack justify="space-between">
-                <Checkbox
-                  colorScheme="blue"
-                  isChecked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
+                <Link 
+                  href="#" 
+                  variant="body2" 
+                  sx={{ ml: 1 }}
+                  onClick={(e) => e.preventDefault()}
                 >
-                  Remember me
-                </Checkbox>
-                <Button variant="link" colorScheme="blue" size="sm">
                   Forgot password?
-                </Button>
-              </HStack>
-
+                </Link>
+              </Box>
               
+              {/* Submit button */}
               <Button
                 type="submit"
-                colorScheme="blue"
-                size="lg"
-                fontSize="md"
-                isLoading={isLoading}
-                loadingText="Signing in"
+                fullWidth
+                variant="contained"
+                color="primary"
+                size="large"
+                disabled={isSubmitting}
+                startIcon={<LoginIcon />}
+                sx={{ mt: 2 }}
               >
-                Sign in
+                {isSubmitting ? 'Signing in...' : 'Sign In'}
               </Button>
             </Stack>
           </form>
           
-          <Button 
-            onClick={debugAuth}
-            size="sm"
-            variant="ghost"
-            colorScheme="gray"
-            mt={2}
-          >
-            Debug Auth
-          </Button>
-          <Divider />
+          <Divider sx={{ my: 3 }} />
           
-          <Text fontSize="sm" textAlign="center" color={textColor}>
+          <Typography variant="body2" color="text.secondary" align="center">
             For development, you can use any username and password
-          </Text>
-        </VStack>
-      </Box>
-    </Center>
+          </Typography>
+        </CardContent>
+      </Paper>
+    </Box>
   );
 };
 

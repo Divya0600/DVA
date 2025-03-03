@@ -1,8 +1,10 @@
 // src/App.js
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
-// Layout component
+// Layout
 import Layout from './components/Layout';
 
 // Pages
@@ -20,43 +22,69 @@ import Help from './pages/Help';
 import Login from './pages/Login';
 import NotFound from './pages/NotFound';
 
-// Auth protection component
+// Context and Theme
+import { AuthProvider } from './context/AuthContext';
+import ThemeProvider from './ThemeProvider';
+
+// Protected route
 import ProtectedRoute from './components/ProtectedRoute';
+
+// Create React Query client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 60000, // 1 minute
+    },
+  },
+});
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={<Login />} />
-        
-        {/* Protected routes with layout */}
-        <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          
-          <Route path="pipelines">
-            <Route index element={<PipelineList />} />
-            <Route path="create" element={<PipelineCreate />} />
-            <Route path=":pipelineId" element={<PipelineDetail />} />
-            <Route path=":pipelineId/edit" element={<PipelineEdit />} />
-          </Route>
-          
-          <Route path="jobs">
-            <Route index element={<JobList />} />
-            <Route path=":jobId" element={<JobDetail />} />
-          </Route>
-          
-          <Route path="sources" element={<Sources />} />
-          <Route path="destinations" element={<Destinations />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="help" element={<Help />} />
-        </Route>
-        
-        {/* 404 route */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Router>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <AuthProvider>
+          <Router>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/login" element={<Login />} />
+              
+              {/* Protected routes with layout */}
+              <Route element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                
+                <Route path="pipelines">
+                  <Route index element={<PipelineList />} />
+                  <Route path="create" element={<PipelineCreate />} />
+                  <Route path=":pipelineId" element={<PipelineDetail />} />
+                  <Route path=":pipelineId/edit" element={<PipelineEdit />} />
+                </Route>
+                
+                <Route path="jobs">
+                  <Route index element={<JobList />} />
+                  <Route path=":jobId" element={<JobDetail />} />
+                </Route>
+                
+                <Route path="sources" element={<Sources />} />
+                <Route path="destinations" element={<Destinations />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="help" element={<Help />} />
+              </Route>
+              
+              {/* 404 route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Router>
+        </AuthProvider>
+      </ThemeProvider>
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
   );
 }
 

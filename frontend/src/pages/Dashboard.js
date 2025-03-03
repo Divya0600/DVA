@@ -5,115 +5,134 @@ import { Link as RouterLink } from 'react-router-dom';
 import {
   Box,
   Button,
-  Flex,
-  Heading,
-  Text,
-  VStack,
-  HStack,
   Card,
-  CardBody,
+  CardActions,
+  CardContent,
   CardHeader,
-  SimpleGrid,
-  Icon,
-  Spinner,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
+  Chip,
   Divider,
-  useColorModeValue,
-  Badge,
-} from '@chakra-ui/react';
+  Grid,
+  IconButton,
+  LinearProgress,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemButton,
+  ListItemText,
+  Paper,
+  Stack,
+  Typography,
+  useTheme
+} from '@mui/material';
 import {
-  AddIcon,
-  ExternalLinkIcon,
-  ArrowRightIcon,
-  CheckCircleIcon,
-  WarningIcon,
-  InfoIcon,
-} from '@chakra-ui/icons';
-import {
-  FiActivity,
-  FiDatabase,
-  FiServer,
-  FiPackage,
-  FiArrowRight,
-} from 'react-icons/fi';
+  Add as AddIcon,
+  ArrowForward as ArrowForwardIcon,
+  Refresh as RefreshIcon,
+  PlayArrow as PlayArrowIcon,
+  Settings as SettingsIcon,
+  CheckCircle as CheckCircleIcon,
+  Warning as WarningIcon,
+  Info as InfoIcon,
+  Schedule as ScheduleIcon,
+  Storage as StorageIcon,
+  Speed as SpeedIcon,
+  SwapHoriz as SwapHorizIcon,
+  Task as TaskIcon
+} from '@mui/icons-material';
 
 import apiService from '../services/api';
-
-// Status badge component
-const StatusBadge = ({ status }) => {
-  let color, icon;
-  
-  switch (status) {
-    case 'active':
-      color = 'green';
-      icon = CheckCircleIcon;
-      break;
-    case 'inactive':
-      color = 'gray';
-      icon = InfoIcon;
-      break;
-    case 'error':
-      color = 'red';
-      icon = WarningIcon;
-      break;
-    default:
-      color = 'gray';
-      icon = InfoIcon;
-  }
-  
-  return (
-    <Badge colorScheme={color} display="flex" alignItems="center" px={2} py={1} borderRadius="full">
-      <Box as={icon} mr={1} size="12px" />
-      <Text>{status.charAt(0).toUpperCase() + status.slice(1)}</Text>
-    </Badge>
-  );
-};
 
 // Helper to format date
 const formatDate = (dateString) => {
   if (!dateString) return 'Never';
+  return new Date(dateString).toLocaleString();
+};
+
+// Status chip component
+const StatusChip = ({ status }) => {
+  let color, icon, label;
   
-  const date = new Date(dateString);
-  return date.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  switch (status) {
+    case 'active':
+      color = 'success';
+      icon = <CheckCircleIcon fontSize="small" />;
+      label = 'Active';
+      break;
+    case 'inactive':
+      color = 'default';
+      icon = <InfoIcon fontSize="small" />;
+      label = 'Inactive';
+      break;
+    case 'error':
+      color = 'error';
+      icon = <WarningIcon fontSize="small" />;
+      label = 'Error';
+      break;
+    case 'running':
+      color = 'info';
+      icon = <ScheduleIcon fontSize="small" />;
+      label = 'Running';
+      break;
+    case 'completed':
+      color = 'success';
+      icon = <CheckCircleIcon fontSize="small" />;
+      label = 'Completed';
+      break;
+    case 'failed':
+      color = 'error';
+      icon = <WarningIcon fontSize="small" />;
+      label = 'Failed';
+      break;
+    default:
+      color = 'default';
+      icon = <InfoIcon fontSize="small" />;
+      label = status || 'Unknown';
+  }
+  
+  return (
+    <Chip 
+      size="small" 
+      color={color} 
+      icon={icon} 
+      label={label}
+      sx={{ fontWeight: 'medium' }}
+    />
+  );
 };
 
 const Dashboard = () => {
+  const theme = useTheme();
+  
   // Get recent pipelines
   const {
     data: pipelinesData,
     isLoading: pipelinesLoading,
-  } = useQuery(['pipelines-recent'], () => apiService.pipelines.getAll({ limit: 5 }), {
-    staleTime: 30000,
-  });
+    refetch: refetchPipelines
+  } = useQuery(['pipelines-recent'], () => 
+    apiService.pipelines.getAll({ limit: 5 }), {
+      staleTime: 30000,
+    }
+  );
 
   // Get recent jobs
   const {
     data: jobsData,
     isLoading: jobsLoading,
-  } = useQuery(['jobs-recent'], () => apiService.jobs.getAll({ limit: 5 }), {
-    staleTime: 30000,
-  });
+    refetch: refetchJobs
+  } = useQuery(['jobs-recent'], () => 
+    apiService.jobs.getAll({ limit: 5 }), {
+      staleTime: 30000,
+    }
+  );
 
-  // Colors - MOVED ALL COLOR HOOKS TO TOP LEVEL
-  const cardBg = useColorModeValue('white', 'gray.700');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-  const iconBgGreen = useColorModeValue('green.50', 'green.900');
-  const iconBgBlue = useColorModeValue('blue.50', 'blue.900');
-  const iconBgPurple = useColorModeValue('purple.50', 'purple.900');
-  const iconBgOrange = useColorModeValue('orange.50', 'orange.900');
-  const rowHoverBg = useColorModeValue('gray.50', 'gray.700');
-  
   // Ensure data is arrays
-  const pipelines = Array.isArray(pipelinesData?.data) ? pipelinesData.data : [];
-  const jobs = Array.isArray(jobsData?.data) ? jobsData.data : [];
+  const pipelines = Array.isArray(pipelinesData?.data?.data) 
+    ? pipelinesData?.data?.data 
+    : [];
+    
+  const jobs = Array.isArray(jobsData?.data?.data) 
+    ? jobsData?.data?.data 
+    : [];
   
   // Calculate summary statistics
   const totalPipelines = pipelines.length;
@@ -121,393 +140,494 @@ const Dashboard = () => {
   const completedJobs = jobs.filter(j => j.status === 'completed').length;
   const failedJobs = jobs.filter(j => j.status === 'failed').length;
 
+  // Refresh all data
+  const handleRefresh = () => {
+    refetchPipelines();
+    refetchJobs();
+  };
+
   return (
-    <Box>
-      {/* Main Hero Section */}
-      <Card mb={6} bg={cardBg} borderColor={borderColor} borderWidth="1px" boxShadow="sm">
-        <CardBody>
-          <Flex direction={{ base: 'column', md: 'row' }} align="center" justify="space-between">
-            <VStack align="start" spacing={3} mb={{ base: 6, md: 0 }} mr={{ md: 6 }}>
-              <Heading size="lg">
-                Pipeline Migration System
-              </Heading>
-              <Text color="gray.600" fontSize="lg">
-                Move data between any Source and Destination in Near Real-Time
-              </Text>
-              <Text color="gray.500">
-                Configure adapters, transfer data, and monitor progress across various systems
-              </Text>
-              <Button
-                as={RouterLink}
-                to="/pipelines/create"
-                colorScheme="blue"
-                size="md"
-                mt={2}
-                leftIcon={<AddIcon />}
-              >
-                Create Pipeline
-              </Button>
-            </VStack>
-            
-            <Box flex={{ md: '1' }} w={{ base: '100%', md: 'auto' }}>
-              <SimpleGrid columns={{ base: 2 }} spacing={4} width="100%">
-                <Stat bg={iconBgGreen} p={4} borderRadius="lg">
-                  <Flex align="center" mb={2}>
-                    <Icon as={FiActivity} color="green.500" boxSize={5} mr={2} />
-                    <StatLabel>Active Pipelines</StatLabel>
-                  </Flex>
-                  <StatNumber>{activePipelines}</StatNumber>
-                  <StatHelpText>Ready to transfer data</StatHelpText>
-                </Stat>
-                
-                <Stat bg={iconBgBlue} p={4} borderRadius="lg">
-                  <Flex align="center" mb={2}>
-                    <Icon as={FiPackage} color="blue.500" boxSize={5} mr={2} />
-                    <StatLabel>Recent Jobs</StatLabel>
-                  </Flex>
-                  <StatNumber>{jobs.length}</StatNumber>
-                  <StatHelpText>{completedJobs} completed, {failedJobs} failed</StatHelpText>
-                </Stat>
-              </SimpleGrid>
-            </Box>
-          </Flex>
-        </CardBody>
-      </Card>
+    <Box sx={{ flexGrow: 1 }}>
+      {/* Header Section */}
+      <Paper 
+        elevation={0}
+        sx={{ 
+          p: 3, 
+          mb: 3, 
+          bgcolor: 'primary.main', 
+          color: 'primary.contrastText',
+          borderRadius: 2
+        }}
+      >
+        <Grid container spacing={3} alignItems="center">
+          <Grid item xs={12} md={8}>
+            <Typography variant="h4" component="h1" gutterBottom>
+              Pipeline Migration System
+            </Typography>
+            <Typography variant="h6" sx={{ opacity: 0.9, mb: 2 }}>
+              Move data between any Source and Destination
+            </Typography>
+            <Button 
+              variant="contained" 
+              color="secondary"
+              startIcon={<AddIcon />}
+              component={RouterLink}
+              to="/pipelines/create"
+              sx={{ mt: 1 }}
+            >
+              Create Pipeline
+            </Button>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Card sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)', color: 'inherit' }}>
+              <CardContent>
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>Active Pipelines</Typography>
+                    <Typography variant="h3">{activePipelines}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>Recent Jobs</Typography>
+                    <Typography variant="h3">{jobs.length}</Typography>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      </Paper>
       
-      {/* Summary Stats */}
-      <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} spacing={6} mb={8}>
-        <Card bg={cardBg} boxShadow="sm">
-          <CardBody>
-            <Flex align="center">
-              <Flex
-                w="12"
-                h="12"
-                align="center"
-                justify="center"
-                borderRadius="full"
-                bg={iconBgGreen}
-                mr={4}
-              >
-                <Icon as={FiActivity} boxSize={6} color="green.500" />
-              </Flex>
-              <Box>
-                <Text color="gray.500" fontSize="sm">Total Pipelines</Text>
-                <Text fontSize="2xl" fontWeight="bold">{totalPipelines}</Text>
+      {/* Stats Cards */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Box 
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    bgcolor: 'primary.light', 
+                    color: 'primary.contrastText',
+                    borderRadius: '50%',
+                    width: 48,
+                    height: 48,
+                    mr: 2
+                  }}
+                >
+                  <SwapHorizIcon />
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Total Pipelines</Typography>
+                  <Typography variant="h4">{totalPipelines}</Typography>
+                </Box>
               </Box>
-            </Flex>
-          </CardBody>
-        </Card>
+            </CardContent>
+          </Card>
+        </Grid>
         
-        <Card bg={cardBg} boxShadow="sm">
-          <CardBody>
-            <Flex align="center">
-              <Flex
-                w="12"
-                h="12"
-                align="center"
-                justify="center"
-                borderRadius="full"
-                bg={iconBgBlue}
-                mr={4}
-              >
-                <Icon as={FiPackage} boxSize={6} color="blue.500" />
-              </Flex>
-              <Box>
-                <Text color="gray.500" fontSize="sm">Total Jobs</Text>
-                <Text fontSize="2xl" fontWeight="bold">{jobs.length}</Text>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Box 
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    bgcolor: 'info.light', 
+                    color: 'info.contrastText',
+                    borderRadius: '50%',
+                    width: 48,
+                    height: 48,
+                    mr: 2
+                  }}
+                >
+                  <TaskIcon />
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Total Jobs</Typography>
+                  <Typography variant="h4">{jobs.length}</Typography>
+                </Box>
               </Box>
-            </Flex>
-          </CardBody>
-        </Card>
+            </CardContent>
+          </Card>
+        </Grid>
         
-        <Card bg={cardBg} boxShadow="sm">
-          <CardBody>
-            <Flex align="center">
-              <Flex
-                w="12"
-                h="12"
-                align="center"
-                justify="center"
-                borderRadius="full"
-                bg={iconBgPurple}
-                mr={4}
-              >
-                <Icon as={FiDatabase} boxSize={6} color="purple.500" />
-              </Flex>
-              <Box>
-                <Text color="gray.500" fontSize="sm">Sources</Text>
-                <Text fontSize="2xl" fontWeight="bold">6</Text>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Box 
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    bgcolor: 'success.light', 
+                    color: 'success.contrastText',
+                    borderRadius: '50%',
+                    width: 48,
+                    height: 48,
+                    mr: 2
+                  }}
+                >
+                  <StorageIcon />
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Sources</Typography>
+                  <Typography variant="h4">6</Typography>
+                </Box>
               </Box>
-            </Flex>
-          </CardBody>
-        </Card>
+            </CardContent>
+          </Card>
+        </Grid>
         
-        <Card bg={cardBg} boxShadow="sm">
-          <CardBody>
-            <Flex align="center">
-              <Flex
-                w="12"
-                h="12"
-                align="center"
-                justify="center"
-                borderRadius="full"
-                bg={iconBgOrange}
-                mr={4}
-              >
-                <Icon as={FiServer} boxSize={6} color="orange.500" />
-              </Flex>
-              <Box>
-                <Text color="gray.500" fontSize="sm">Destinations</Text>
-                <Text fontSize="2xl" fontWeight="bold">6</Text>
+        <Grid item xs={12} sm={6} md={3}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Box 
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    bgcolor: 'warning.light', 
+                    color: 'warning.contrastText',
+                    borderRadius: '50%',
+                    width: 48,
+                    height: 48,
+                    mr: 2
+                  }}
+                >
+                  <StorageIcon />
+                </Box>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Destinations</Typography>
+                  <Typography variant="h4">6</Typography>
+                </Box>
               </Box>
-            </Flex>
-          </CardBody>
-        </Card>
-      </SimpleGrid>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
       
       {/* Recent Pipelines */}
-      <Card mb={8} bg={cardBg} boxShadow="sm">
-        <CardHeader>
-          <Flex justify="space-between" align="center">
-            <Heading size="md">Recent Pipelines</Heading>
-            <Button
-              as={RouterLink}
-              to="/pipelines"
-              variant="ghost"
-              rightIcon={<ExternalLinkIcon />}
-              size="sm"
-            >
-              View All
-            </Button>
-          </Flex>
-        </CardHeader>
-        <CardBody p={0}>
-          {pipelinesLoading ? (
-            <Flex justify="center" py={8}>
-              <Spinner size="lg" />
-            </Flex>
-          ) : pipelines.length === 0 ? (
-            <Box textAlign="center" py={8}>
-              <Text mb={4}>No pipelines created yet</Text>
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={6}>
+          <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <CardHeader 
+              title="Recent Pipelines" 
+              action={
+                <Box>
+                  <IconButton 
+                    size="small" 
+                    aria-label="refresh" 
+                    onClick={() => refetchPipelines()}
+                  >
+                    <RefreshIcon />
+                  </IconButton>
+                  <Button 
+                    component={RouterLink} 
+                    to="/pipelines" 
+                    endIcon={<ArrowForwardIcon />}
+                    sx={{ ml: 1 }}
+                  >
+                    View All
+                  </Button>
+                </Box>
+              }
+            />
+            <Divider />
+            
+            {pipelinesLoading ? (
+              <Box sx={{ p: 2 }}>
+                <LinearProgress />
+              </Box>
+            ) : pipelines.length === 0 ? (
+              <CardContent sx={{ textAlign: 'center', py: 5 }}>
+                <Typography variant="body1" color="text.secondary" gutterBottom>
+                  No pipelines created yet
+                </Typography>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<AddIcon />}
+                  component={RouterLink}
+                  to="/pipelines/create"
+                  sx={{ mt: 2 }}
+                >
+                  Create Your First Pipeline
+                </Button>
+              </CardContent>
+            ) : (
+              <List sx={{ flex: 1, overflow: 'auto' }}>
+                {pipelines.map((pipeline) => (
+                  <React.Fragment key={pipeline.id}>
+                    <ListItem
+                      secondaryAction={
+                        <IconButton 
+                          edge="end" 
+                          component={RouterLink}
+                          to={`/pipelines/${pipeline.id}`}
+                        >
+                          <ArrowForwardIcon />
+                        </IconButton>
+                      }
+                      disablePadding
+                    >
+                      <ListItemButton component={RouterLink} to={`/pipelines/${pipeline.id}`}>
+                        <ListItemAvatar>
+                          <StatusChip status={pipeline.status} />
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={pipeline.name}
+                          secondary={
+                            <React.Fragment>
+                              <Typography
+                                component="span"
+                                variant="body2"
+                                color="text.primary"
+                              >
+                                {pipeline.source_type} → {pipeline.destination_type}
+                              </Typography>
+                              <br />
+                              <Typography variant="caption" display="block">
+                                Last run: {formatDate(pipeline.last_run_at)}
+                              </Typography>
+                            </React.Fragment>
+                          }
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                    <Divider variant="inset" component="li" />
+                  </React.Fragment>
+                ))}
+              </List>
+            )}
+            
+            <CardActions sx={{ justifyContent: 'center', p: 2 }}>
               <Button
-                as={RouterLink}
+                variant="outlined"
+                fullWidth
+                component={RouterLink}
                 to="/pipelines/create"
-                colorScheme="blue"
-                leftIcon={<AddIcon />}
+                startIcon={<AddIcon />}
               >
-                Create Your First Pipeline
+                Create New Pipeline
               </Button>
-            </Box>
-          ) : (
-            <Box>
-              {pipelines.slice(0, 5).map((pipeline, index) => (
-                <React.Fragment key={pipeline.id}>
-                  {index > 0 && <Divider />}
-                  <Flex 
-                    p={4} 
-                    align="center" 
-                    justify="space-between"
-                    _hover={{ bg: rowHoverBg }}
+            </CardActions>
+          </Card>
+        </Grid>
+        
+        {/* Recent Jobs */}
+        <Grid item xs={12} md={6}>
+          <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <CardHeader 
+              title="Recent Jobs" 
+              action={
+                <Box>
+                  <IconButton 
+                    size="small" 
+                    aria-label="refresh" 
+                    onClick={() => refetchJobs()}
                   >
-                    <Flex align="center">
-                      <Box mr={4}>
-                        <StatusBadge status={pipeline.status} />
-                      </Box>
-                      <Box>
-                        <Text fontWeight="medium">{pipeline.name}</Text>
-                        <Flex align="center" fontSize="sm" color="gray.500">
-                          <Text>{pipeline.source_type}</Text>
-                          <Icon as={FiArrowRight} mx={2} />
-                          <Text>{pipeline.destination_type}</Text>
-                        </Flex>
-                      </Box>
-                    </Flex>
-                    <HStack>
-                      <Text fontSize="sm" color="gray.500" mr={4}>
-                        Last run: {formatDate(pipeline.last_run_at)}
-                      </Text>
-                      <Button
-                        as={RouterLink}
-                        to={`/pipelines/${pipeline.id}`}
-                        size="sm"
-                        variant="outline"
-                        rightIcon={<ArrowRightIcon />}
-                      >
-                        View
-                      </Button>
-                    </HStack>
-                  </Flex>
-                </React.Fragment>
-              ))}
-            </Box>
-          )}
-        </CardBody>
-      </Card>
-      
-      {/* Recent Jobs */}
-      <Card mb={8} bg={cardBg} boxShadow="sm">
-        <CardHeader>
-          <Flex justify="space-between" align="center">
-            <Heading size="md">Recent Jobs</Heading>
-            <Button
-              as={RouterLink}
-              to="/jobs"
-              variant="ghost"
-              rightIcon={<ExternalLinkIcon />}
-              size="sm"
-            >
-              View All
-            </Button>
-          </Flex>
-        </CardHeader>
-        <CardBody p={0}>
-          {jobsLoading ? (
-            <Flex justify="center" py={8}>
-              <Spinner size="lg" />
-            </Flex>
-          ) : jobs.length === 0 ? (
-            <Box textAlign="center" py={8}>
-              <Text>No jobs have been executed yet</Text>
-            </Box>
-          ) : (
-            <Box>
-              {jobs.slice(0, 5).map((job, index) => (
-                <React.Fragment key={job.id}>
-                  {index > 0 && <Divider />}
-                  <Flex 
-                    p={4} 
-                    align="center" 
-                    justify="space-between"
-                    _hover={{ bg: rowHoverBg }}
+                    <RefreshIcon />
+                  </IconButton>
+                  <Button 
+                    component={RouterLink} 
+                    to="/jobs" 
+                    endIcon={<ArrowForwardIcon />}
+                    sx={{ ml: 1 }}
                   >
-                    <HStack spacing={4}>
-                      <Box>
-                        <Badge colorScheme={
-                          job.status === 'completed' ? 'green' :
-                          job.status === 'running' ? 'blue' :
-                          job.status === 'failed' ? 'red' :
-                          'gray'
-                        }>
-                          {job.status}
-                        </Badge>
-                      </Box>
-                      <Box>
-                        <Text fontWeight="medium">{job.pipeline_name}</Text>
-                        <Text fontSize="sm" color="gray.500">
-                          Started: {formatDate(job.started_at)}
-                        </Text>
-                      </Box>
-                    </HStack>
-                    <HStack>
-                      <Button
-                        as={RouterLink}
-                        to={`/jobs/${job.id}`}
-                        size="sm"
-                        variant="outline"
-                        rightIcon={<ArrowRightIcon />}
-                      >
-                        Details
-                      </Button>
-                    </HStack>
-                  </Flex>
-                </React.Fragment>
-              ))}
-            </Box>
-          )}
-        </CardBody>
-      </Card>
+                    View All
+                  </Button>
+                </Box>
+              }
+            />
+            <Divider />
+            
+            {jobsLoading ? (
+              <Box sx={{ p: 2 }}>
+                <LinearProgress />
+              </Box>
+            ) : jobs.length === 0 ? (
+              <CardContent sx={{ textAlign: 'center', py: 5 }}>
+                <Typography variant="body1" color="text.secondary">
+                  No jobs have been executed yet
+                </Typography>
+              </CardContent>
+            ) : (
+              <List sx={{ flex: 1, overflow: 'auto' }}>
+                {jobs.map((job) => (
+                  <React.Fragment key={job.id}>
+                    <ListItem
+                      secondaryAction={
+                        <IconButton 
+                          edge="end" 
+                          component={RouterLink}
+                          to={`/jobs/${job.id}`}
+                        >
+                          <ArrowForwardIcon />
+                        </IconButton>
+                      }
+                      disablePadding
+                    >
+                      <ListItemButton component={RouterLink} to={`/jobs/${job.id}`}>
+                        <ListItemAvatar>
+                          <StatusChip status={job.status} />
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={job.pipeline_name}
+                          secondary={
+                            <React.Fragment>
+                              <Typography component="span" variant="caption" display="block">
+                                Started: {formatDate(job.started_at)}
+                              </Typography>
+                              {job.error_count > 0 && (
+                                <Chip
+                                  label={`${job.error_count} errors`}
+                                  size="small"
+                                  color="error"
+                                  sx={{ mt: 0.5 }}
+                                />
+                              )}
+                            </React.Fragment>
+                          }
+                        />
+                      </ListItemButton>
+                    </ListItem>
+                    <Divider variant="inset" component="li" />
+                  </React.Fragment>
+                ))}
+              </List>
+            )}
+          </Card>
+        </Grid>
+      </Grid>
       
       {/* Getting Started */}
-      <Card mb={8} bg={cardBg} boxShadow="sm">
-        <CardHeader>
-          <Heading size="md">Getting Started</Heading>
-        </CardHeader>
-        <CardBody>
-          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
-            <Card variant="outline">
-              <CardBody>
-                <VStack spacing={4} align="start">
-                  <Flex
-                    w="12"
-                    h="12"
-                    align="center"
-                    justify="center"
-                    borderRadius="full"
-                    bg={iconBgGreen}
+      <Card sx={{ mt: 3 }}>
+        <CardHeader title="Getting Started" />
+        <Divider />
+        <CardContent>
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={4}>
+              <Card variant="outlined" sx={{ height: '100%' }}>
+                <CardContent>
+                  <Box 
+                    sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      bgcolor: 'primary.light', 
+                      color: 'primary.contrastText',
+                      borderRadius: '50%',
+                      width: 48,
+                      height: 48,
+                      mx: 'auto',
+                      mb: 2
+                    }}
                   >
-                    <Icon as={FiDatabase} boxSize={6} color="green.500" />
-                  </Flex>
-                  <Heading size="sm">1. Configure Source</Heading>
-                  <Text fontSize="sm">Set up connections to your data sources</Text>
+                    <StorageIcon />
+                  </Box>
+                  <Typography variant="h6" align="center" gutterBottom>
+                    1. Configure Source
+                  </Typography>
+                  <Typography variant="body2" align="center" color="text.secondary">
+                    Set up connections to your data sources
+                  </Typography>
+                </CardContent>
+                <CardActions sx={{ justifyContent: 'center' }}>
                   <Button 
-                    as={RouterLink}
+                    component={RouterLink} 
                     to="/sources"
-                    variant="outline"
-                    size="sm"
-                    rightIcon={<ExternalLinkIcon />}
+                    endIcon={<ArrowForwardIcon />}
                   >
                     Explore Sources
                   </Button>
-                </VStack>
-              </CardBody>
-            </Card>
+                </CardActions>
+              </Card>
+            </Grid>
             
-            <Card variant="outline">
-              <CardBody>
-                <VStack spacing={4} align="start">
-                  <Flex
-                    w="12"
-                    h="12"
-                    align="center"
-                    justify="center"
-                    borderRadius="full"
-                    bg={iconBgBlue}
+            <Grid item xs={12} md={4}>
+              <Card variant="outlined" sx={{ height: '100%' }}>
+                <CardContent>
+                  <Box 
+                    sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      bgcolor: 'info.light', 
+                      color: 'info.contrastText',
+                      borderRadius: '50%',
+                      width: 48,
+                      height: 48,
+                      mx: 'auto',
+                      mb: 2
+                    }}
                   >
-                    <Icon as={FiServer} boxSize={6} color="blue.500" />
-                  </Flex>
-                  <Heading size="sm">2. Configure Destinations</Heading>
-                  <Text fontSize="sm">Set up where you want to send your data</Text>
+                    <StorageIcon />
+                  </Box>
+                  <Typography variant="h6" align="center" gutterBottom>
+                    2. Configure Destinations
+                  </Typography>
+                  <Typography variant="body2" align="center" color="text.secondary">
+                    Set up where you want to send your data
+                  </Typography>
+                </CardContent>
+                <CardActions sx={{ justifyContent: 'center' }}>
                   <Button 
-                    as={RouterLink}
+                    component={RouterLink} 
                     to="/destinations"
-                    variant="outline"
-                    size="sm"
-                    rightIcon={<ExternalLinkIcon />}
+                    endIcon={<ArrowForwardIcon />}
                   >
                     Explore Destinations
                   </Button>
-                </VStack>
-              </CardBody>
-            </Card>
+                </CardActions>
+              </Card>
+            </Grid>
             
-            <Card variant="outline">
-              <CardBody>
-                <VStack spacing={4} align="start">
-                  <Flex
-                    w="12"
-                    h="12"
-                    align="center"
-                    justify="center"
-                    borderRadius="full"
-                    bg={iconBgOrange}
+            <Grid item xs={12} md={4}>
+              <Card variant="outlined" sx={{ height: '100%' }}>
+                <CardContent>
+                  <Box 
+                    sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      bgcolor: 'success.light', 
+                      color: 'success.contrastText',
+                      borderRadius: '50%',
+                      width: 48,
+                      height: 48,
+                      mx: 'auto',
+                      mb: 2
+                    }}
                   >
-                    <Icon as={FiActivity} boxSize={6} color="orange.500" />
-                  </Flex>
-                  <Heading size="sm">3. Create Pipeline</Heading>
-                  <Text fontSize="sm">Connect sources to destinations and start moving data</Text>
+                    <SwapHorizIcon />
+                  </Box>
+                  <Typography variant="h6" align="center" gutterBottom>
+                    3. Create Pipeline
+                  </Typography>
+                  <Typography variant="body2" align="center" color="text.secondary">
+                    Connect sources to destinations and start moving data
+                  </Typography>
+                </CardContent>
+                <CardActions sx={{ justifyContent: 'center' }}>
                   <Button 
-                    as={RouterLink}
+                    variant="contained"
+                    color="primary"
+                    component={RouterLink} 
                     to="/pipelines/create"
-                    colorScheme="blue"
-                    size="sm"
                   >
                     Create Pipeline
                   </Button>
-                </VStack>
-              </CardBody>
-            </Card>
-          </SimpleGrid>
-        </CardBody>
+                </CardActions>
+              </Card>
+            </Grid>
+          </Grid>
+        </CardContent>
       </Card>
     </Box>
   );

@@ -1,64 +1,107 @@
-// src/pages/JobDetail.js - Fixed data access patterns
+// src/pages/JobDetail.js
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
+  Alert,
   Box,
   Button,
   Card,
-  CardBody,
+  CardContent,
   CardHeader,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Divider,
-  Flex,
   Grid,
-  GridItem,
-  Heading,
-  HStack,
-  Icon,
+  IconButton,
+  LinearProgress,
   Link,
+  Paper,
   Stack,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
   Tab,
   Tabs,
-  TabList,
-  TabPanels,
-  TabPanel,
-  Text,
-  useToast,
-  Spinner,
-  Badge,
-  Code,
-  VStack,
   Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Accordion,
-  AccordionItem,
-  AccordionButton,
-  AccordionPanel,
-  AccordionIcon,
-} from '@chakra-ui/react';
-import { 
-  ChevronRightIcon, 
-  RepeatIcon,
-  WarningIcon,
-  InfoIcon,
-  CheckCircleIcon,
-  CloseIcon,
-  ExternalLinkIcon,
-} from '@chakra-ui/icons';
-import { FiActivity, FiAlertCircle, FiCheck, FiFileText, FiPieChart } from 'react-icons/fi';
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tooltip,
+  Typography,
+  useTheme
+} from '@mui/material';
+import {
+  ArrowBack as ArrowBackIcon,
+  Refresh as RefreshIcon,
+  Cancel as CancelIcon,
+  PlayArrow as PlayArrowIcon,
+  CheckCircle as CheckCircleIcon,
+  Error as ErrorIcon,
+  Info as InfoIcon,
+  AccessTime as AccessTimeIcon,
+  ArrowForward as ArrowForwardIcon,
+  Description as DescriptionIcon,
+  BugReport as BugReportIcon,
+  DataArray as DataArrayIcon,
+  Details as DetailsIcon,
+  Link as LinkIcon,
+} from '@mui/icons-material';
 
 import apiService from '../services/api';
-import JsonViewer from '../components/JsonViewer';
 
-// Helper to format date
+// Status chip component
+const StatusChip = ({ status }) => {
+  let color, icon, label;
+  
+  switch (status) {
+    case 'completed':
+      color = 'success';
+      icon = <CheckCircleIcon fontSize="small" />;
+      label = 'Completed';
+      break;
+    case 'running':
+      color = 'info';
+      icon = <AccessTimeIcon fontSize="small" />;
+      label = 'Running';
+      break;
+    case 'pending':
+      color = 'warning';
+      icon = <InfoIcon fontSize="small" />;
+      label = 'Pending';
+      break;
+    case 'failed':
+      color = 'error';
+      icon = <ErrorIcon fontSize="small" />;
+      label = 'Failed';
+      break;
+    case 'cancelled':
+      color = 'default';
+      icon = <CancelIcon fontSize="small" />;
+      label = 'Cancelled';
+      break;
+    default:
+      color = 'default';
+      icon = <InfoIcon fontSize="small" />;
+      label = status || 'Unknown';
+  }
+  
+  return (
+    <Chip 
+      size="small" 
+      color={color} 
+      icon={icon} 
+      label={label}
+      sx={{ fontWeight: 'medium' }}
+    />
+  );
+};
+
+// Helper function to format date
 const formatDate = (dateString) => {
   if (!dateString) return '-';
   return new Date(dateString).toLocaleString();
@@ -78,82 +121,92 @@ const formatDuration = (seconds) => {
   return `${minutes}m ${remainingSeconds}s`;
 };
 
-// Status badge component with appropriate icon
-const JobStatusBadge = ({ status }) => {
-  let color, icon;
-  
-  switch (status) {
-    case 'completed':
-      color = 'green';
-      icon = CheckCircleIcon;
-      break;
-    case 'running':
-      color = 'blue';
-      icon = InfoIcon;
-      break;
-    case 'pending':
-      color = 'yellow';
-      icon = InfoIcon;
-      break;
-    case 'failed':
-      color = 'red';
-      icon = WarningIcon;
-      break;
-    case 'cancelled':
-      color = 'gray';
-      icon = CloseIcon;
-      break;
-    default:
-      color = 'gray';
-      icon = InfoIcon;
-  }
-  
-  return (
-    <Badge colorScheme={color} px={2} py={1} borderRadius="md">
-      <HStack spacing={1}>
-        <Icon as={icon} w={3} h={3} />
-        <Text>{status.charAt(0).toUpperCase() + status.slice(1)}</Text>
-      </HStack>
-    </Badge>
-  );
-};
-
-// Log level badge
-const LogLevelBadge = ({ level }) => {
+// Log Level component
+const LogLevel = ({ level }) => {
   let color;
   
   switch (level) {
     case 'info':
-      color = 'blue';
+      color = 'info';
       break;
     case 'warning':
-      color = 'yellow';
+      color = 'warning';
       break;
     case 'error':
-      color = 'red';
+      color = 'error';
       break;
     case 'debug':
-      color = 'purple';
+      color = 'secondary';
       break;
     default:
-      color = 'gray';
+      color = 'default';
   }
   
   return (
-    <Badge colorScheme={color} variant="subtle" fontSize="xs">
-      {level.toUpperCase()}
-    </Badge>
+    <Chip 
+      size="small" 
+      color={color} 
+      label={level.toUpperCase()} 
+      variant="outlined" 
+    />
+  );
+};
+
+// JSON Viewer Component
+const JsonViewer = ({ data }) => {
+  // Format the JSON for display with proper indentation
+  const formattedJson = JSON.stringify(data, null, 2);
+  
+  return (
+    <Box
+      component="pre"
+      sx={{
+        p: 2,
+        borderRadius: 1,
+        bgcolor: 'grey.100',
+        color: 'grey.900',
+        overflow: 'auto',
+        fontSize: '0.875rem',
+        fontFamily: '"Roboto Mono", monospace',
+        maxHeight: '400px'
+      }}
+    >
+      {formattedJson ? formattedJson : '{}'}
+    </Box>
+  );
+};
+
+// Tab Panel component
+const TabPanel = ({ children, value, index, ...other }) => {
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`tabpanel-${index}`}
+      aria-labelledby={`tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box>
+          {children}
+        </Box>
+      )}
+    </div>
   );
 };
 
 const JobDetail = () => {
   const { jobId } = useParams();
   const navigate = useNavigate();
-  const toast = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState(0);
+  const theme = useTheme();
   
-  // Fetch job details including logs
+  // State for tabs and confirmation dialogs
+  const [tabValue, setTabValue] = useState(0);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
+  
+  // Fetch job details
   const {
     data: jobResponse,
     isLoading,
@@ -166,7 +219,7 @@ const JobDetail = () => {
     {
       refetchInterval: (data) => {
         const jobStatus = data?.data?.status;
-        return activeTab === 0 && ['running', 'pending'].includes(jobStatus) ? 5000 : false;
+        return tabValue === 0 && ['running', 'pending'].includes(jobStatus) ? 5000 : false;
       },
     }
   );
@@ -191,27 +244,12 @@ const JobDetail = () => {
   const retryMutation = useMutation(
     () => apiService.jobs.retry(jobId),
     {
-      onSuccess: (data) => {
-        toast({
-          title: 'Job Retry Started',
-          description: `Job ID: ${data.data.job_id}`,
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-        });
+      onSuccess: () => {
         queryClient.invalidateQueries(['job', jobId]);
         queryClient.invalidateQueries(['job-status', jobId]);
         queryClient.invalidateQueries(['jobs']);
         queryClient.invalidateQueries(['pipeline-jobs']);
-      },
-      onError: (err) => {
-        toast({
-          title: 'Failed to Retry Job',
-          description: err.response?.data?.message || 'An error occurred',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
+        setConfirmDialogOpen(false);
       },
     }
   );
@@ -221,39 +259,43 @@ const JobDetail = () => {
     () => apiService.jobs.cancel(jobId),
     {
       onSuccess: () => {
-        toast({
-          title: 'Job Cancelled',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
         queryClient.invalidateQueries(['job', jobId]);
         queryClient.invalidateQueries(['job-status', jobId]);
         queryClient.invalidateQueries(['jobs']);
         queryClient.invalidateQueries(['pipeline-jobs']);
-      },
-      onError: (err) => {
-        toast({
-          title: 'Failed to Cancel Job',
-          description: err.response?.data?.message || 'An error occurred',
-          status: 'error',
-          duration: 5000,
-          isClosable: true,
-        });
+        setConfirmDialogOpen(false);
       },
     }
   );
   
+  // Handle tab change
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+  
   // Handle retry job
   const handleRetry = () => {
-    if (window.confirm('Are you sure you want to retry this job?')) {
-      retryMutation.mutate();
-    }
+    setConfirmAction('retry');
+    setConfirmDialogOpen(true);
   };
   
   // Handle cancel job
   const handleCancel = () => {
-    if (window.confirm('Are you sure you want to cancel this job?')) {
+    setConfirmAction('cancel');
+    setConfirmDialogOpen(true);
+  };
+  
+  // Handle dialog close
+  const handleCloseDialog = () => {
+    setConfirmDialogOpen(false);
+    setConfirmAction(null);
+  };
+  
+  // Handle dialog confirm action
+  const handleConfirmAction = () => {
+    if (confirmAction === 'retry') {
+      retryMutation.mutate();
+    } else if (confirmAction === 'cancel') {
       cancelMutation.mutate();
     }
   };
@@ -264,34 +306,29 @@ const JobDetail = () => {
     refetchStatus();
   };
   
+  // Extract job data
+  const job = jobResponse?.data;
+  const taskStatus = statusResponse?.data?.task;
+  
   if (isLoading) {
     return (
-      <Flex justify="center" align="center" height="400px">
-        <Spinner size="xl" />
-      </Flex>
-    );
-  }
-  
-  if (isError) {
-    return (
-      <Box p={4}>
-        <Heading size="md" color="red.500">Error loading job</Heading>
-        <Text>{error.message}</Text>
-        <Button mt={4} onClick={refetch}>Try Again</Button>
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
+        <CircularProgress />
       </Box>
     );
   }
   
-  // Get job data from response
-  const job = jobResponse?.data;
-  // Get task status from response
-  const taskStatus = statusResponse?.data?.task;
-  
-  if (!job) {
+  if (isError || !job) {
     return (
-      <Box p={4}>
-        <Heading size="md">Job not found</Heading>
-        <Button as={RouterLink} to="/jobs" mt={4} leftIcon={<ChevronRightIcon />}>
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error" sx={{ mb: 3 }}>
+          Error loading job: {error?.message || 'Unknown error'}
+        </Alert>
+        <Button 
+          variant="outlined" 
+          startIcon={<ArrowBackIcon />} 
+          onClick={() => navigate('/jobs')}
+        >
           Back to Jobs
         </Button>
       </Box>
@@ -306,468 +343,594 @@ const JobDetail = () => {
   return (
     <Box>
       {/* Header */}
-      <Flex justify="space-between" align="center" mb={6}>
-        <HStack>
-          <Heading size="lg">Job Detail</Heading>
-          <JobStatusBadge status={job.status} />
-        </HStack>
-        
-        <HStack spacing={3}>
-          <Button
-            leftIcon={<RepeatIcon />}
-            variant="outline"
-            onClick={handleRefresh}
-          >
-            Refresh
-          </Button>
-          
-          {job.status === 'failed' && (
-            <Button
-              leftIcon={<RepeatIcon />}
-              colorScheme="blue"
-              onClick={handleRetry}
-              isLoading={retryMutation.isLoading}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Stack 
+          direction={{ xs: 'column', md: 'row' }} 
+          justifyContent="space-between" 
+          alignItems={{ xs: 'flex-start', md: 'center' }}
+          spacing={2}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <IconButton
+              edge="start"
+              onClick={() => navigate('/jobs')}
+              sx={{ mr: 1 }}
             >
-              Retry Job
-            </Button>
-          )}
-          
-          {(job.status === 'pending' || job.status === 'running') && (
-            <Button
-              leftIcon={<CloseIcon />}
-              colorScheme="red"
-              onClick={handleCancel}
-              isLoading={cancelMutation.isLoading}
-            >
-              Cancel Job
-            </Button>
-          )}
-          
-          <Button
-            as={RouterLink}
-            to={`/pipelines/${job.pipeline}`}
-            colorScheme="blue"
-            variant="outline"
-            rightIcon={<ExternalLinkIcon />}
-          >
-            View Pipeline
-          </Button>
-        </HStack>
-      </Flex>
-      
-      {/* Job Overview */}
-      <Card mb={6}>
-        <CardBody>
-          <Grid templateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }} gap={6}>
-            <VStack align="start" spacing={1}>
-              <Text color="gray.500" fontSize="sm">Pipeline</Text>
-              <Link
-                as={RouterLink}
+              <ArrowBackIcon />
+            </IconButton>
+            <Box>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Typography variant="h5" component="h1">
+                  Job Details
+                </Typography>
+                <StatusChip status={job.status} />
+              </Stack>
+              <Typography 
+                variant="body2" 
+                color="text.secondary"
+                component={RouterLink}
                 to={`/pipelines/${job.pipeline}`}
-                fontWeight="bold"
-                fontSize="lg"
-                color="blue.500"
+                sx={{ mt: 0.5, display: 'flex', alignItems: 'center', textDecoration: 'none' }}
+              >
+                Pipeline: {job.pipeline_name}
+                <LinkIcon fontSize="small" sx={{ ml: 0.5 }} />
+              </Typography>
+            </Box>
+          </Box>
+          
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={handleRefresh}
+            >
+              Refresh
+            </Button>
+            
+            {job.status === 'failed' && (
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<PlayArrowIcon />}
+                onClick={handleRetry}
+                disabled={retryMutation.isLoading}
+              >
+                Retry Job
+              </Button>
+            )}
+            
+            {(job.status === 'pending' || job.status === 'running') && (
+              <Button
+                variant="contained"
+                color="error"
+                startIcon={<CancelIcon />}
+                onClick={handleCancel}
+                disabled={cancelMutation.isLoading}
+              >
+                Cancel Job
+              </Button>
+            )}
+            
+            <Button
+              variant="outlined"
+              startIcon={<LinkIcon />}
+              component={RouterLink}
+              to={`/pipelines/${job.pipeline}`}
+            >
+              View Pipeline
+            </Button>
+          </Stack>
+        </Stack>
+      </Paper>
+      
+      {/* Stats cards */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Pipeline
+              </Typography>
+              <Typography variant="h5" component={Link} 
+                to={`/pipelines/${job.pipeline}`} 
+                sx={{ textDecoration: 'none' }}
               >
                 {job.pipeline_name}
-              </Link>
-              <HStack>
-                <Text color="gray.500" fontSize="sm">Source:</Text>
-                <Text fontSize="sm">{job.pipeline_source_type}</Text>
-              </HStack>
-              <HStack>
-                <Text color="gray.500" fontSize="sm">Destination:</Text>
-                <Text fontSize="sm">{job.pipeline_destination_type}</Text>
-              </HStack>
-            </VStack>
-            
-            <VStack align="start" spacing={1}>
-              <Text color="gray.500" fontSize="sm">Timing</Text>
-              <HStack>
-                <Icon as={InfoIcon} color="blue.500" />
-                <Text fontWeight="bold" fontSize="lg">{duration}</Text>
-              </HStack>
-              <HStack>
-                <Text color="gray.500" fontSize="sm">Started:</Text>
-                <Text fontSize="sm">{startTime}</Text>
-              </HStack>
-              <HStack>
-                <Text color="gray.500" fontSize="sm">Completed:</Text>
-                <Text fontSize="sm">{endTime}</Text>
-              </HStack>
-            </VStack>
-            
-            <VStack align="start" spacing={1}>
-              <Text color="gray.500" fontSize="sm">Records</Text>
-              <HStack>
-                <Text fontWeight="bold" fontSize="lg">
-                  {job.source_record_count !== null ? job.source_record_count : '-'} → {job.destination_record_count !== null ? job.destination_record_count : '-'}
-                </Text>
-              </HStack>
-              <HStack>
-                <Text color="gray.500" fontSize="sm">Source Records:</Text>
-                <Text fontSize="sm">{job.source_record_count !== null ? job.source_record_count : '-'}</Text>
-              </HStack>
-              <HStack>
-                <Text color="gray.500" fontSize="sm">Destination Records:</Text>
-                <Text fontSize="sm">{job.destination_record_count !== null ? job.destination_record_count : '-'}</Text>
-              </HStack>
-              {job.error_count > 0 && (
-                <HStack>
-                  <Text color="red.500" fontSize="sm">Errors:</Text>
-                  <Text fontSize="sm" color="red.500">{job.error_count}</Text>
-                </HStack>
-              )}
-            </VStack>
-          </Grid>
-        </CardBody>
-      </Card>
-      
-      {/* Tab Section */}
-      <Tabs colorScheme="blue" onChange={(index) => setActiveTab(index)}>
-        <TabList>
-          <Tab>
-            <HStack>
-              <Icon as={FiActivity} />
-              <Text>Logs</Text>
-            </HStack>
-          </Tab>
-          <Tab>
-            <HStack>
-              <Icon as={FiAlertCircle} />
-              <Text>Errors</Text>
-              {job.error_count > 0 && (
-                <Badge colorScheme="red" ml={1}>
-                  {job.error_count}
-                </Badge>
-              )}
-            </HStack>
-          </Tab>
-          <Tab>
-            <HStack>
-              <Icon as={FiPieChart} />
-              <Text>Results</Text>
-            </HStack>
-          </Tab>
-          <Tab>
-            <HStack>
-              <Icon as={FiFileText} />
-              <Text>Details</Text>
-            </HStack>
-          </Tab>
-        </TabList>
+              </Typography>
+              <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                <Chip 
+                  label={job.pipeline_source_type || 'Unknown'} 
+                  size="small" 
+                  color="primary" 
+                  variant="outlined"
+                />
+                <ArrowForwardIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+                <Chip 
+                  label={job.pipeline_destination_type || 'Unknown'} 
+                  size="small" 
+                  color="secondary" 
+                  variant="outlined"
+                />
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
         
-        <TabPanels>
-          {/* Logs Tab */}
-          <TabPanel p={4}>
-            <HStack mb={4} justify="space-between">
-              <Heading size="sm">Execution Logs</Heading>
-              <Button size="sm" leftIcon={<RepeatIcon />} onClick={handleRefresh} variant="outline">
-                Refresh Logs
-              </Button>
-            </HStack>
-            
-            <Box 
-              borderWidth="1px" 
-              borderRadius="md" 
-              p={0} 
-              maxHeight="500px" 
-              overflowY="auto"
-              fontFamily="mono"
-              fontSize="sm"
-            >
-              {job.logs && job.logs.length > 0 ? (
-                <Table variant="simple" size="sm">
-                  <Thead position="sticky" top={0} bg="white" zIndex={1}>
-                    <Tr>
-                      <Th width="180px">Timestamp</Th>
-                      <Th width="80px">Level</Th>
-                      <Th>Message</Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody>
-                    {job.logs.map((log, index) => (
-                      <Tr key={index}>
-                        <Td color="gray.500">
-                          {new Date(log.timestamp).toLocaleString()}
-                        </Td>
-                        <Td>
-                          <LogLevelBadge level={log.level} />
-                        </Td>
-                        <Td whiteSpace="pre-wrap">
-                          {log.message}
-                        </Td>
-                      </Tr>
-                    ))}
-                  </Tbody>
-                </Table>
-              ) : (
-                <Flex p={4} justify="center" align="center">
-                  <Text color="gray.500">No logs available</Text>
-                </Flex>
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Timing
+              </Typography>
+              <Typography variant="h5">{duration}</Typography>
+              <Stack spacing={1} sx={{ mt: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Started: {startTime}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Completed: {endTime}
+                </Typography>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+        
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                Records
+              </Typography>
+              <Typography variant="h5">
+                {job.source_record_count !== null ? job.source_record_count : '-'} → {job.destination_record_count !== null ? job.destination_record_count : '-'}
+              </Typography>
+              {job.error_count > 0 && (
+                <Chip 
+                  label={`${job.error_count} errors`} 
+                  size="small" 
+                  color="error"
+                  sx={{ mt: 1 }}
+                />
               )}
-            </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+      
+      {/* Pending or Running status indicator */}
+      {(job.status === 'pending' || job.status === 'running') && (
+        <Alert 
+          severity="info" 
+          icon={<AccessTimeIcon />}
+          action={
+            <Button color="inherit" size="small" onClick={handleRefresh}>
+              Refresh
+            </Button>
+          }
+          sx={{ mb: 3 }}
+        >
+          {job.status === 'running' 
+            ? 'This job is currently running. Information will update automatically.' 
+            : 'This job is pending execution. It will start soon.'}
+          <LinearProgress sx={{ mt: 1 }} />
+        </Alert>
+      )}
+      
+      {/* Tabs */}
+      <Box sx={{ width: '100%' }}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs 
+            value={tabValue} 
+            onChange={handleTabChange} 
+            aria-label="job details tabs"
+          >
+            <Tab 
+              icon={<DescriptionIcon />} 
+              iconPosition="start" 
+              label="Logs" 
+              id="tab-0" 
+              aria-controls="tabpanel-0" 
+            />
+            <Tab 
+              icon={<BugReportIcon />} 
+              iconPosition="start" 
+              label={`Errors (${job.error_count || 0})`} 
+              id="tab-1" 
+              aria-controls="tabpanel-1" 
+            />
+            <Tab 
+              icon={<DataArrayIcon />} 
+              iconPosition="start" 
+              label="Results" 
+              id="tab-2" 
+              aria-controls="tabpanel-2" 
+            />
+            <Tab 
+              icon={<DetailsIcon />} 
+              iconPosition="start" 
+              label="Details" 
+              id="tab-3" 
+              aria-controls="tabpanel-3" 
+            />
+          </Tabs>
+        </Box>
+        
+        {/* Logs Tab */}
+        <TabPanel value={tabValue} index={0}>
+          <Box sx={{ p: 2 }}>
+            <Stack 
+              direction="row" 
+              justifyContent="space-between" 
+              alignItems="center" 
+              sx={{ mb: 2 }}
+            >
+              <Typography variant="h6">Execution Logs</Typography>
+              <Button 
+                variant="outlined" 
+                size="small" 
+                startIcon={<RefreshIcon />}
+                onClick={handleRefresh}
+              >
+                Refresh
+              </Button>
+            </Stack>
             
-            {(job.status === 'running' || job.status === 'pending') && (
-              <Box mt={4} p={2} bg="blue.50" borderRadius="md">
-                <Text fontSize="sm" color="blue.600">
-                  {job.status === 'running' ? 'Job is currently running. Logs will update automatically.' : 'Job is pending execution. Logs will appear when the job starts.'}
-                </Text>
-              </Box>
-            )}
-          </TabPanel>
-          
-          {/* Errors Tab */}
-          <TabPanel p={4}>
-            <HStack mb={4} justify="space-between">
-              <Heading size="sm">Error Details</Heading>
-              <Text color="gray.500">{job.error_count} errors</Text>
-            </HStack>
+            <TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 500 }}>
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell width="180">Timestamp</TableCell>
+                    <TableCell width="100">Level</TableCell>
+                    <TableCell>Message</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {job.logs && job.logs.length > 0 ? (
+                    job.logs.map((log, index) => (
+                      <TableRow key={index}>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                          {formatDate(log.timestamp)}
+                        </TableCell>
+                        <TableCell>
+                          <LogLevel level={log.level} />
+                        </TableCell>
+                        <TableCell sx={{ whiteSpace: 'pre-wrap' }}>
+                          {log.message}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={3} align="center">
+                        No logs available
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        </TabPanel>
+        
+        {/* Errors Tab */}
+        <TabPanel value={tabValue} index={1}>
+          <Box sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Error Details
+            </Typography>
             
             {job.errors && job.errors.length > 0 ? (
-              <Accordion allowMultiple defaultIndex={[0]}>
+              <Stack spacing={2}>
                 {job.errors.map((error, index) => (
-                  <AccordionItem key={index}>
-                    <h2>
-                      <AccordionButton py={3}>
-                        <Box flex="1" textAlign="left">
-                          <HStack>
-                            <Icon as={WarningIcon} color="red.500" />
-                            <Text fontWeight="medium">{error.message}</Text>
-                          </HStack>
-                          <Text fontSize="xs" color="gray.500" mt={1}>
-                            {new Date(error.timestamp).toLocaleString()}
-                          </Text>
-                        </Box>
-                        <AccordionIcon />
-                      </AccordionButton>
-                    </h2>
-                    <AccordionPanel pb={4}>
-                      {error.details ? (
-                        <Box 
-                          bg="gray.50" 
-                          p={3} 
-                          borderRadius="md" 
-                          fontFamily="mono" 
-                          fontSize="sm"
-                          overflowX="auto"
-                        >
+                  <Card key={index} variant="outlined" sx={{ borderColor: 'error.light' }}>
+                    <CardHeader
+                      title={
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <ErrorIcon color="error" />
+                          <Typography variant="h6" color="error.main">
+                            Error
+                          </Typography>
+                        </Stack>
+                      }
+                      subheader={formatDate(error.timestamp)}
+                    />
+                    <Divider />
+                    <CardContent>
+                      <Typography variant="subtitle1" gutterBottom>
+                        {error.message}
+                      </Typography>
+                      
+                      {error.details && (
+                        <>
+                          <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>
+                            Details:
+                          </Typography>
                           <JsonViewer data={error.details} />
-                        </Box>
-                      ) : (
-                        <Text color="gray.500">No additional details available</Text>
+                        </>
                       )}
-                    </AccordionPanel>
-                  </AccordionItem>
+                    </CardContent>
+                  </Card>
                 ))}
-              </Accordion>
+              </Stack>
             ) : (
-              <Flex 
-                p={10} 
-                justify="center" 
-                align="center" 
-                borderWidth="1px" 
-                borderRadius="md"
-                borderStyle="dashed"
-              >
-                <VStack>
-                  <Icon as={FiCheck} boxSize={10} color="green.500" />
-                  <Text color="gray.600">No errors reported for this job</Text>
-                </VStack>
-              </Flex>
+              <Alert severity="success" icon={<CheckCircleIcon />}>
+                No errors reported for this job
+              </Alert>
             )}
-          </TabPanel>
-          
-          {/* Results Tab */}
-          <TabPanel p={4}>
-            <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6}>
-              <Card>
-                <CardHeader>
-                  <Heading size="sm">Source Data Summary</Heading>
-                </CardHeader>
-                <CardBody>
-                  <Stack spacing={4}>
-                    <Stat>
-                      <StatLabel>Records Retrieved</StatLabel>
-                      <StatNumber>{job.source_record_count !== null ? job.source_record_count : '-'}</StatNumber>
-                      <StatHelpText>From {job.pipeline_source_type}</StatHelpText>
-                    </Stat>
-                    
-                    {taskStatus && taskStatus.info && taskStatus.info.source_details && (
-                      <Box>
-                        <Text fontWeight="medium" mb={2}>Additional Details</Text>
-                        <JsonViewer data={taskStatus.info.source_details} />
+          </Box>
+        </TabPanel>
+        
+        {/* Results Tab */}
+        <TabPanel value={tabValue} index={2}>
+          <Box sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Data Transfer Results
+            </Typography>
+            
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardHeader title="Source Data" />
+                  <Divider />
+                  <CardContent>
+                    <Stack spacing={2}>
+                      <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                        <Typography variant="subtitle2" color="text.secondary">Records Retrieved</Typography>
+                        <Typography variant="h4">{job.source_record_count !== null ? job.source_record_count : 'N/A'}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          From {job.pipeline_source_type || 'Unknown'}
+                        </Typography>
                       </Box>
-                    )}
-                  </Stack>
-                </CardBody>
-              </Card>
+                      
+                      {taskStatus && taskStatus.info && taskStatus.info.source_details && (
+                        <>
+                          <Typography variant="subtitle2">Additional Details</Typography>
+                          <JsonViewer data={taskStatus.info.source_details} />
+                        </>
+                      )}
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Grid>
               
-              <Card>
-                <CardHeader>
-                  <Heading size="sm">Destination Data Summary</Heading>
-                </CardHeader>
-                <CardBody>
-                  <Stack spacing={4}>
-                    <Stat>
-                      <StatLabel>Records Uploaded</StatLabel>
-                      <StatNumber>{job.destination_record_count !== null ? job.destination_record_count : '-'}</StatNumber>
-                      <StatHelpText>To {job.pipeline_destination_type}</StatHelpText>
-                    </Stat>
-                    
-                    {taskStatus && taskStatus.info && taskStatus.info.destination_details && (
-                      <Box>
-                        <Text fontWeight="medium" mb={2}>Additional Details</Text>
-                        <JsonViewer data={taskStatus.info.destination_details} />
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardHeader title="Destination Data" />
+                  <Divider />
+                  <CardContent>
+                    <Stack spacing={2}>
+                      <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                        <Typography variant="subtitle2" color="text.secondary">Records Uploaded</Typography>
+                        <Typography variant="h4">{job.destination_record_count !== null ? job.destination_record_count : 'N/A'}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          To {job.pipeline_destination_type || 'Unknown'}
+                        </Typography>
                       </Box>
-                    )}
-                  </Stack>
-                </CardBody>
-              </Card>
+                      
+                      {taskStatus && taskStatus.info && taskStatus.info.destination_details && (
+                        <>
+                          <Typography variant="subtitle2">Additional Details</Typography>
+                          <JsonViewer data={taskStatus.info.destination_details} />
+                        </>
+                      )}
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Grid>
               
-              {/* Success Rate Card */}
-              <GridItem colSpan={{ md: 2 }}>
-                <Card>
-                  <CardHeader>
-                    <Heading size="sm">Transfer Results</Heading>
-                  </CardHeader>
-                  <CardBody>
-                    <Grid templateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }} gap={6}>
-                      <GridItem>
-                        <Stat>
-                          <StatLabel>Success Rate</StatLabel>
-                          <StatNumber>
+              <Grid item xs={12}>
+                <Card variant="outlined">
+                  <CardHeader title="Transfer Summary" />
+                  <Divider />
+                  <CardContent>
+                    <Grid container spacing={3}>
+                      <Grid item xs={12} md={4}>
+                        <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Success Rate</Typography>
+                          <Typography variant="h4">
                             {job.source_record_count && job.destination_record_count ? 
                               `${Math.round((job.destination_record_count / job.source_record_count) * 100)}%` : 
                               'N/A'}
-                          </StatNumber>
-                          <StatHelpText>
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
                             {job.error_count > 0 ? 
-                              <Text color="red.500">{job.error_count} errors occurred</Text> : 
-                              <Text color="green.500">No errors</Text>}
-                          </StatHelpText>
-                        </Stat>
-                      </GridItem>
+                              <Box component="span" color="error.main">{job.error_count} errors</Box> : 
+                              <Box component="span" color="success.main">No errors</Box>}
+                          </Typography>
+                        </Box>
+                      </Grid>
                       
-                      <GridItem>
-                        <Stat>
-                          <StatLabel>Processing Time</StatLabel>
-                          <StatNumber>{formatDuration(job.duration)}</StatNumber>
-                          <StatHelpText>Total execution time</StatHelpText>
-                        </Stat>
-                      </GridItem>
+                      <Grid item xs={12} md={4}>
+                        <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Processing Time</Typography>
+                          <Typography variant="h4">{formatDuration(job.duration)}</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Total execution time
+                          </Typography>
+                        </Box>
+                      </Grid>
                       
-                      <GridItem>
-                        <Stat>
-                          <StatLabel>Status</StatLabel>
-                          <Box mt={1}>
-                            <JobStatusBadge status={job.status} />
+                      <Grid item xs={12} md={4}>
+                        <Box sx={{ p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                          <Typography variant="subtitle2" color="text.secondary">Status</Typography>
+                          <Box sx={{ my: 1 }}>
+                            <StatusChip status={job.status} />
                           </Box>
-                          <StatHelpText>
+                          <Typography variant="caption" color="text.secondary">
                             {job.status === 'completed' ? 'Successfully completed' : 
                               job.status === 'failed' ? 'Failed with errors' :
                               job.status === 'running' ? 'Currently in progress' :
                               job.status === 'pending' ? 'Waiting to start' :
                               job.status === 'cancelled' ? 'Cancelled by user' : ''}
-                          </StatHelpText>
-                        </Stat>
-                      </GridItem>
-                    </Grid>
-                  </CardBody>
-                </Card>
-              </GridItem>
-            </Grid>
-          </TabPanel>
-          
-          {/* Details Tab */}
-          <TabPanel p={4}>
-            <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6}>
-              <Card>
-                <CardHeader>
-                  <Heading size="sm">Job Information</Heading>
-                </CardHeader>
-                <CardBody>
-                  <Stack spacing={3} divider={<Divider />}>
-                    <Flex justify="space-between">
-                      <Text color="gray.600">Job ID</Text>
-                      <Code>{job.id}</Code>
-                    </Flex>
-                    
-                    <Flex justify="space-between">
-                      <Text color="gray.600">Task ID</Text>
-                      <Code>{job.task_id || 'None'}</Code>
-                    </Flex>
-                    
-                    <Flex justify="space-between">
-                      <Text color="gray.600">Pipeline</Text>
-                      <Link 
-                        as={RouterLink} 
-                        to={`/pipelines/${job.pipeline}`}
-                        color="blue.500"
-                      >
-                        {job.pipeline_name}
-                      </Link>
-                    </Flex>
-                    
-                    <Flex justify="space-between">
-                      <Text color="gray.600">Created</Text>
-                      <Text>{formatDate(job.created_at)}</Text>
-                    </Flex>
-                    
-                    <Flex justify="space-between">
-                      <Text color="gray.600">Started</Text>
-                      <Text>{formatDate(job.started_at)}</Text>
-                    </Flex>
-                    
-                    <Flex justify="space-between">
-                      <Text color="gray.600">Completed</Text>
-                      <Text>{formatDate(job.completed_at)}</Text>
-                    </Flex>
-                  </Stack>
-                </CardBody>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <Heading size="sm">Task Status</Heading>
-                </CardHeader>
-                <CardBody>
-                  {taskStatus ? (
-                    <Stack spacing={3} divider={<Divider />}>
-                      <Flex justify="space-between">
-                        <Text color="gray.600">Task ID</Text>
-                        <Code>{taskStatus.task_id || 'None'}</Code>
-                      </Flex>
-                      
-                      <Flex justify="space-between">
-                        <Text color="gray.600">State</Text>
-                        <Badge colorScheme={
-                          taskStatus.state === 'SUCCESS' ? 'green' :
-                          taskStatus.state === 'FAILURE' ? 'red' :
-                          taskStatus.state === 'PENDING' ? 'yellow' :
-                          taskStatus.state === 'STARTED' ? 'blue' : 'gray'
-                        }>
-                          {taskStatus.state}
-                        </Badge>
-                      </Flex>
-                      
-                      {taskStatus.info && (
-                        <Box>
-                          <Text color="gray.600" mb={2}>Task Result</Text>
-                          <Box bg="gray.50" p={3} borderRadius="md">
-                            <JsonViewer data={taskStatus.info} />
-                          </Box>
+                          </Typography>
                         </Box>
-                      )}
-                    </Stack>
-                  ) : (
-                    <Text color="gray.500">No task status information available</Text>
-                  )}
-                </CardBody>
-              </Card>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </Grid>
             </Grid>
-          </TabPanel>
-        </TabPanels>
-      </Tabs>
+          </Box>
+        </TabPanel>
+        
+        {/* Details Tab */}
+        <TabPanel value={tabValue} index={3}>
+          <Box sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Job Information
+            </Typography>
+            
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardHeader title="Job Information" />
+                  <Divider />
+                  <CardContent>
+                    <Stack spacing={2}>
+                      <Stack direction="row" spacing={2}>
+                        <Typography variant="subtitle1" fontWeight="bold" sx={{ width: 150 }}>
+                          Job ID:
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontFamily: 'monospace', overflowWrap: 'break-word' }}>
+                          {job.id}
+                        </Typography>
+                      </Stack>
+                      
+                      <Stack direction="row" spacing={2}>
+                        <Typography variant="subtitle1" fontWeight="bold" sx={{ width: 150 }}>
+                          Task ID:
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontFamily: 'monospace', overflowWrap: 'break-word' }}>
+                          {job.task_id || 'None'}
+                        </Typography>
+                      </Stack>
+                      
+                      <Stack direction="row" spacing={2}>
+                        <Typography variant="subtitle1" fontWeight="bold" sx={{ width: 150 }}>
+                          Pipeline:
+                        </Typography>
+                        <Link 
+                          component={RouterLink}
+                          to={`/pipelines/${job.pipeline}`}
+                          underline="hover"
+                        >
+                          {job.pipeline_name}
+                        </Link>
+                      </Stack>
+                      
+                      <Stack direction="row" spacing={2}>
+                        <Typography variant="subtitle1" fontWeight="bold" sx={{ width: 150 }}>
+                          Created:
+                        </Typography>
+                        <Typography variant="body1">
+                          {formatDate(job.created_at)}
+                        </Typography>
+                      </Stack>
+                      
+                      <Stack direction="row" spacing={2}>
+                        <Typography variant="subtitle1" fontWeight="bold" sx={{ width: 150 }}>
+                          Started:
+                        </Typography>
+                        <Typography variant="body1">
+                          {formatDate(job.started_at)}
+                        </Typography>
+                      </Stack>
+                      
+                      <Stack direction="row" spacing={2}>
+                        <Typography variant="subtitle1" fontWeight="bold" sx={{ width: 150 }}>
+                          Completed:
+                        </Typography>
+                        <Typography variant="body1">
+                          {formatDate(job.completed_at)}
+                        </Typography>
+                      </Stack>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <Card variant="outlined">
+                  <CardHeader title="Task Status" />
+                  <Divider />
+                  <CardContent>
+                    {taskStatus ? (
+                      <Stack spacing={2}>
+                        <Stack direction="row" spacing={2}>
+                          <Typography variant="subtitle1" fontWeight="bold" sx={{ width: 150 }}>
+                            Task ID:
+                          </Typography>
+                          <Typography variant="body1" sx={{ fontFamily: 'monospace' }}>
+                            {taskStatus.task_id || 'None'}
+                          </Typography>
+                        </Stack>
+                        
+                        <Stack direction="row" spacing={2}>
+                          <Typography variant="subtitle1" fontWeight="bold" sx={{ width: 150 }}>
+                            State:
+                          </Typography>
+                          <Chip 
+                            label={taskStatus.state} 
+                            size="small"
+                            color={
+                              taskStatus.state === 'SUCCESS' ? 'success' :
+                              taskStatus.state === 'FAILURE' ? 'error' :
+                              taskStatus.state === 'PENDING' ? 'warning' :
+                              taskStatus.state === 'STARTED' ? 'info' : 'default'
+                            }
+                          />
+                        </Stack>
+                        
+                        {taskStatus.info && (
+                          <>
+                            <Typography variant="subtitle1" fontWeight="bold">
+                              Task Result:
+                            </Typography>
+                            <JsonViewer data={taskStatus.info} />
+                          </>
+                        )}
+                      </Stack>
+                    ) : (
+                      <Typography color="text.secondary">
+                        No task status information available
+                      </Typography>
+                    )}
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+          </Box>
+        </TabPanel>
+      </Box>
+      
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={confirmDialogOpen}
+        onClose={handleCloseDialog}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">
+          {confirmAction === 'retry' ? 'Retry Failed Job?' : 'Cancel Running Job?'}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            {confirmAction === 'retry'
+              ? 'Are you sure you want to retry this failed job? A new job execution will be started.'
+              : 'Are you sure you want to cancel this job? This action cannot be undone.'}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>No</Button>
+          <Button 
+            onClick={handleConfirmAction} 
+            autoFocus
+            color={confirmAction === 'cancel' ? 'error' : 'primary'}
+          >
+            Yes, {confirmAction === 'retry' ? 'Retry' : 'Cancel'} Job
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

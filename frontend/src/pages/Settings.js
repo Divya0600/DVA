@@ -1,442 +1,475 @@
-// src/pages/Settings.js
+// src/pages/PipelineList.js
 import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
   Card,
-  CardBody,
-  CardHeader,
+  Chip,
+  CircularProgress,
   Divider,
   FormControl,
-  FormLabel,
-  FormHelperText,
-  Heading,
-  Input,
+  Grid,
+  IconButton,
+  InputAdornment,
+  InputLabel,
+  ListItemIcon,
+  Menu,
+  MenuItem,
+  Paper,
   Select,
-  Switch,
-  Tab,
-  TabList,
-  TabPanel,
-  TabPanels,
-  Tabs,
-  Text,
-  VStack,
-  NumberInput,
-  NumberInputField,
-  NumberInputStepper,
-  NumberIncrementStepper,
-  NumberDecrementStepper,
-  useToast,
-  useColorMode,
-} from '@chakra-ui/react';
+  Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  TextField,
+  Toolbar,
+  Tooltip,
+  Typography,
+  useTheme
+} from '@mui/material';
+import {
+  Add as AddIcon,
+  Search as SearchIcon,
+  Refresh as RefreshIcon,
+  FilterList as FilterListIcon,
+  PlayArrow as PlayArrowIcon,
+  Settings as SettingsIcon,
+  MoreVert as MoreVertIcon,
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+  CheckCircle as CheckCircleIcon,
+  Error as ErrorIcon,
+  Info as InfoIcon,
+} from '@mui/icons-material';
 
-const Settings = () => {
-  const toast = useToast();
-  const { colorMode, toggleColorMode } = useColorMode();
+import apiService from '../services/api';
+
+// Status chip component
+const StatusChip = ({ status }) => {
+  let color, icon, label;
   
-  // General settings
-  const [generalSettings, setGeneralSettings] = useState({
-    systemName: 'Pipeline Migration System',
-    pageSize: 10,
-    refreshInterval: 30,
-    enableNotifications: true,
-  });
-  
-  // Jobs settings
-  const [jobsSettings, setJobsSettings] = useState({
-    maxRetries: 3,
-    retryDelay: 60,
-    jobTimeout: 30,
-    cleanupAfterDays: 30,
-  });
-  
-  // Notification settings
-  const [notificationSettings, setNotificationSettings] = useState({
-    emailNotifications: false,
-    emailAddress: '',
-    failureNotificationsOnly: true,
-    slackNotifications: false,
-    slackWebhook: '',
-  });
-  
-  // Handle general settings change
-  const handleGeneralChange = (field, value) => {
-    setGeneralSettings((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-  
-  // Handle jobs settings change
-  const handleJobsChange = (field, value) => {
-    setJobsSettings((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-  
-  // Handle notification settings change
-  const handleNotificationChange = (field, value) => {
-    setNotificationSettings((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-  
-  // Handle save settings
-  const handleSaveSettings = (section) => {
-    // In a real application, this would call an API to save settings
-    toast({
-      title: 'Settings Saved',
-      description: `${section} settings have been saved successfully.`,
-      status: 'success',
-      duration: 5000,
-      isClosable: true,
-    });
-  };
+  switch (status) {
+    case 'active':
+      color = 'success';
+      icon = <CheckCircleIcon fontSize="small" />;
+      label = 'Active';
+      break;
+    case 'inactive':
+      color = 'default';
+      icon = <InfoIcon fontSize="small" />;
+      label = 'Inactive';
+      break;
+    case 'error':
+      color = 'error';
+      icon = <ErrorIcon fontSize="small" />;
+      label = 'Error';
+      break;
+    default:
+      color = 'default';
+      icon = <InfoIcon fontSize="small" />;
+      label = status || 'Unknown';
+  }
   
   return (
-    <Box>
-      <Heading size="lg" mb={6}>Settings</Heading>
+    <Chip 
+      size="small" 
+      color={color} 
+      icon={icon} 
+      label={label}
+      sx={{ fontWeight: 'medium' }}
+    />
+  );
+};
+
+// Helper function to format date
+const formatDate = (dateString) => {
+  if (!dateString) return '-';
+  return new Date(dateString).toLocaleString();
+};
+
+const PipelineList = () => {
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  
+  // State for search, filter, and pagination
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  
+  // Pipeline actions menu state
+  const [actionMenuAnchor, setActionMenuAnchor] = useState(null);
+  const [selectedPipeline, setSelectedPipeline] = useState(null);
+  
+  // Get pipelines with filters
+  const {
+    data: pipelinesResponse,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useQuery(
+    ['pipelines', searchQuery, statusFilter, page, rowsPerPage],
+    () => apiService.pipelines.getAll({
+      search: searchQuery,
+      status: statusFilter,
+      page: page + 1, // API uses 1-based indexing
+      page_size: rowsPerPage,
+    }),
+    {
+      keepPreviousData: true,
+    }
+  );
+  
+  // Execute pipeline mutation
+  const executeMutation = useMutation(
+    (pipelineId) => apiService.pipelines.execute(pipelineId),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['pipelines']);
+        setActionMenuAnchor(null);
+      },
+    }
+  );
+  
+  // Extract pipeline data and total count
+  const pipelines = pipelinesResponse?.data?.data || [];
+  const totalCount = pipelinesResponse?.data?.count || 0;
+  
+  // Open actions menu for a pipeline
+  const handleOpenActionMenu = (event, pipeline) => {
+    event.stopPropagation();
+    setActionMenuAnchor(event.currentTarget);
+    setSelectedPipeline(pipeline);
+  };
+  
+  // Close actions menu
+  const handleCloseActionMenu = () => {
+    setActionMenuAnchor(null);
+    setSelectedPipeline(null);
+  };
+  
+  // Execute pipeline
+  const handleExecutePipeline = () => {
+    if (selectedPipeline) {
+      executeMutation.mutate(selectedPipeline.id);
+    }
+  };
+  
+  // Navigate to edit pipeline
+  const handleEditPipeline = () => {
+    if (selectedPipeline) {
+      navigate(`/pipelines/${selectedPipeline.id}/edit`);
+    }
+    handleCloseActionMenu();
+  };
+  
+  // Handle pagination changes
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+  
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+  
+  // Handle row click to navigate to pipeline details
+  const handleRowClick = (pipelineId) => {
+    navigate(`/pipelines/${pipelineId}`);
+  };
+  
+  // Clear all filters
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('');
+    setPage(0);
+  };
+
+  return (
+    <Box sx={{ width: '100%' }}>
+      {/* Header */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Stack 
+          direction={{ xs: 'column', sm: 'row' }} 
+          justifyContent="space-between" 
+          alignItems={{ xs: 'stretch', sm: 'center' }}
+          spacing={2}
+        >
+          <Box>
+            <Typography variant="h5" component="h1" gutterBottom={1}>
+              Pipelines
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Configure data flows between sources and destinations
+            </Typography>
+          </Box>
+          
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            component={RouterLink}
+            to="/pipelines/create"
+          >
+            Create Pipeline
+          </Button>
+        </Stack>
+      </Paper>
       
-      <Tabs colorScheme="blue" isLazy>
-        <TabList>
-          <Tab>General</Tab>
-          <Tab>Jobs</Tab>
-          <Tab>Notifications</Tab>
-          <Tab>Appearance</Tab>
-        </TabList>
+      {/* Filters */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Stack 
+          direction={{ xs: 'column', sm: 'row' }} 
+          spacing={2} 
+          alignItems="center"
+        >
+          <TextField
+            fullWidth
+            placeholder="Search pipelines..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ flexGrow: 1 }}
+          />
+          
+          <FormControl sx={{ minWidth: 120 }}>
+            <InputLabel id="status-filter-label">Status</InputLabel>
+            <Select
+              labelId="status-filter-label"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              label="Status"
+              displayEmpty
+            >
+              <MenuItem value="">All</MenuItem>
+              <MenuItem value="active">Active</MenuItem>
+              <MenuItem value="inactive">Inactive</MenuItem>
+              <MenuItem value="error">Error</MenuItem>
+            </Select>
+          </FormControl>
+          
+          <Button 
+            variant="outlined" 
+            startIcon={<RefreshIcon />} 
+            onClick={refetch}
+          >
+            Refresh
+          </Button>
+          
+          {(searchQuery || statusFilter) && (
+            <Button 
+              onClick={handleClearFilters}
+            >
+              Clear Filters
+            </Button>
+          )}
+        </Stack>
+      </Paper>
+      
+      {/* Pipelines Table */}
+      <Paper sx={{ width: '100%', mb: 3 }}>
+        {isLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+            <CircularProgress />
+          </Box>
+        ) : isError ? (
+          <Box sx={{ p: 3, textAlign: 'center' }}>
+            <Typography color="error" gutterBottom>
+              Error loading pipelines: {error?.message || 'Unknown error'}
+            </Typography>
+            <Button 
+              startIcon={<RefreshIcon />} 
+              onClick={refetch}
+              variant="outlined"
+              sx={{ mt: 1 }}
+            >
+              Try Again
+            </Button>
+          </Box>
+        ) : pipelines.length === 0 ? (
+          <Box sx={{ p: 5, textAlign: 'center' }}>
+            <Typography variant="h6" gutterBottom>
+              No Pipelines Found
+            </Typography>
+            <Typography variant="body2" color="text.secondary" paragraph>
+              {searchQuery || statusFilter ? 
+                'No pipelines match your search criteria. Try adjusting your filters.' : 
+                'Get started by creating your first pipeline'}
+            </Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<AddIcon />}
+              component={RouterLink}
+              to="/pipelines/create"
+              sx={{ mt: 2 }}
+            >
+              Create Pipeline
+            </Button>
+          </Box>
+        ) : (
+          <>
+            <TableContainer>
+              <Table sx={{ minWidth: 750 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell width="50">Status</TableCell>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Source</TableCell>
+                    <TableCell>Destination</TableCell>
+                    <TableCell>Last Run</TableCell>
+                    <TableCell align="right">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {pipelines.map((pipeline) => (
+                    <TableRow
+                      hover
+                      key={pipeline.id}
+                      onClick={() => handleRowClick(pipeline.id)}
+                      sx={{ cursor: 'pointer' }}
+                    >
+                      <TableCell>
+                        <StatusChip status={pipeline.status} />
+                      </TableCell>
+                      <TableCell>
+                        <Typography fontWeight="medium">{pipeline.name}</Typography>
+                        {pipeline.description && (
+                          <Typography variant="body2" color="text.secondary" noWrap>
+                            {pipeline.description}
+                          </Typography>
+                        )}
+                        {pipeline.schedule && (
+                          <Chip 
+                            size="small" 
+                            label={`Schedule: ${pipeline.schedule}`}
+                            icon={<InfoIcon fontSize="small" />}
+                            variant="outlined" 
+                            sx={{ mt: 0.5 }}
+                          />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={pipeline.source_type || 'Unknown'} 
+                          size="small" 
+                          color="primary"
+                          variant="outlined"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={pipeline.destination_type || 'Unknown'} 
+                          size="small" 
+                          color="secondary"
+                          variant="outlined"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {formatDate(pipeline.last_run_at)}
+                      </TableCell>
+                      <TableCell align="right">
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <Tooltip title="Run Pipeline">
+                            <IconButton 
+                              color="primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                executeMutation.mutate(pipeline.id);
+                              }}
+                              disabled={pipeline.status !== 'active'}
+                              size="small"
+                            >
+                              <PlayArrowIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Edit Pipeline">
+                            <IconButton 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/pipelines/${pipeline.id}/edit`);
+                              }}
+                              size="small"
+                            >
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <IconButton 
+                            size="small"
+                            onClick={(e) => handleOpenActionMenu(e, pipeline)}
+                          >
+                            <MoreVertIcon />
+                          </IconButton>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            
+            {/* Pagination */}
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25, 50]}
+              component="div"
+              count={totalCount}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+            />
+          </>
+        )}
         
-        <TabPanels>
-          {/* General Settings Tab */}
-          <TabPanel px={0}>
-            <Card>
-              <CardHeader>
-                <Heading size="md">General Settings</Heading>
-              </CardHeader>
-              <Divider />
-              <CardBody>
-                <VStack spacing={6} align="stretch">
-                  <FormControl>
-                    <FormLabel>System Name</FormLabel>
-                    <Input
-                      value={generalSettings.systemName}
-                      onChange={(e) => handleGeneralChange('systemName', e.target.value)}
-                    />
-                    <FormHelperText>
-                      The name displayed in the application header
-                    </FormHelperText>
-                  </FormControl>
-                  
-                  <FormControl>
-                    <FormLabel>Default Page Size</FormLabel>
-                    <Select
-                      value={generalSettings.pageSize}
-                      onChange={(e) => handleGeneralChange('pageSize', parseInt(e.target.value))}
-                    >
-                      <option value={10}>10 items per page</option>
-                      <option value={20}>20 items per page</option>
-                      <option value={50}>50 items per page</option>
-                      <option value={100}>100 items per page</option>
-                    </Select>
-                    <FormHelperText>
-                      Default number of items to display in lists and tables
-                    </FormHelperText>
-                  </FormControl>
-                  
-                  <FormControl>
-                    <FormLabel>Auto-Refresh Interval (seconds)</FormLabel>
-                    <NumberInput
-                      value={generalSettings.refreshInterval}
-                      onChange={(valueString, valueNumber) => handleGeneralChange('refreshInterval', valueNumber)}
-                      min={0}
-                      max={300}
-                    >
-                      <NumberInputField />
-                      <NumberInputStepper>
-                        <NumberIncrementStepper />
-                        <NumberDecrementStepper />
-                      </NumberInputStepper>
-                    </NumberInput>
-                    <FormHelperText>
-                      How often to refresh job statuses (0 to disable)
-                    </FormHelperText>
-                  </FormControl>
-                  
-                  <FormControl display="flex" alignItems="center">
-                    <Switch
-                      id="enable-notifications"
-                      isChecked={generalSettings.enableNotifications}
-                      onChange={(e) => handleGeneralChange('enableNotifications', e.target.checked)}
-                      mr={3}
-                    />
-                    <FormLabel htmlFor="enable-notifications" mb="0">
-                      Enable Browser Notifications
-                    </FormLabel>
-                  </FormControl>
-                  
-                  <Button
-                    colorScheme="blue"
-                    alignSelf="flex-start"
-                    onClick={() => handleSaveSettings('General')}
-                  >
-                    Save General Settings
-                  </Button>
-                </VStack>
-              </CardBody>
-            </Card>
-          </TabPanel>
-          
-          {/* Jobs Settings Tab */}
-          <TabPanel px={0}>
-            <Card>
-              <CardHeader>
-                <Heading size="md">Jobs Settings</Heading>
-              </CardHeader>
-              <Divider />
-              <CardBody>
-                <VStack spacing={6} align="stretch">
-                  <FormControl>
-                    <FormLabel>Maximum Retry Attempts</FormLabel>
-                    <NumberInput
-                      value={jobsSettings.maxRetries}
-                      onChange={(valueString, valueNumber) => handleJobsChange('maxRetries', valueNumber)}
-                      min={0}
-                      max={10}
-                    >
-                      <NumberInputField />
-                      <NumberInputStepper>
-                        <NumberIncrementStepper />
-                        <NumberDecrementStepper />
-                      </NumberInputStepper>
-                    </NumberInput>
-                    <FormHelperText>
-                      Number of times to retry a failed job automatically
-                    </FormHelperText>
-                  </FormControl>
-                  
-                  <FormControl>
-                    <FormLabel>Retry Delay (seconds)</FormLabel>
-                    <NumberInput
-                      value={jobsSettings.retryDelay}
-                      onChange={(valueString, valueNumber) => handleJobsChange('retryDelay', valueNumber)}
-                      min={10}
-                      max={3600}
-                    >
-                      <NumberInputField />
-                      <NumberInputStepper>
-                        <NumberIncrementStepper />
-                        <NumberDecrementStepper />
-                      </NumberInputStepper>
-                    </NumberInput>
-                    <FormHelperText>
-                      Delay before retrying a failed job
-                    </FormHelperText>
-                  </FormControl>
-                  
-                  <FormControl>
-                    <FormLabel>Job Timeout (minutes)</FormLabel>
-                    <NumberInput
-                      value={jobsSettings.jobTimeout}
-                      onChange={(valueString, valueNumber) => handleJobsChange('jobTimeout', valueNumber)}
-                      min={1}
-                      max={1440}
-                    >
-                      <NumberInputField />
-                      <NumberInputStepper>
-                        <NumberIncrementStepper />
-                        <NumberDecrementStepper />
-                      </NumberInputStepper>
-                    </NumberInput>
-                    <FormHelperText>
-                      Maximum running time before a job is marked as failed
-                    </FormHelperText>
-                  </FormControl>
-                  
-                  <FormControl>
-                    <FormLabel>Job History Retention (days)</FormLabel>
-                    <NumberInput
-                      value={jobsSettings.cleanupAfterDays}
-                      onChange={(valueString, valueNumber) => handleJobsChange('cleanupAfterDays', valueNumber)}
-                      min={1}
-                      max={365}
-                    >
-                      <NumberInputField />
-                      <NumberInputStepper>
-                        <NumberIncrementStepper />
-                        <NumberDecrementStepper />
-                      </NumberInputStepper>
-                    </NumberInput>
-                    <FormHelperText>
-                      How long to keep job history before cleanup
-                    </FormHelperText>
-                  </FormControl>
-                  
-                  <Button
-                    colorScheme="blue"
-                    alignSelf="flex-start"
-                    onClick={() => handleSaveSettings('Jobs')}
-                  >
-                    Save Jobs Settings
-                  </Button>
-                </VStack>
-              </CardBody>
-            </Card>
-          </TabPanel>
-          
-          {/* Notifications Tab */}
-          <TabPanel px={0}>
-            <Card>
-              <CardHeader>
-                <Heading size="md">Notification Settings</Heading>
-              </CardHeader>
-              <Divider />
-              <CardBody>
-                <VStack spacing={6} align="stretch">
-                  <FormControl display="flex" alignItems="center">
-                    <Switch
-                      id="email-notifications"
-                      isChecked={notificationSettings.emailNotifications}
-                      onChange={(e) => handleNotificationChange('emailNotifications', e.target.checked)}
-                      mr={3}
-                    />
-                    <FormLabel htmlFor="email-notifications" mb="0">
-                      Enable Email Notifications
-                    </FormLabel>
-                  </FormControl>
-                  
-                  {notificationSettings.emailNotifications && (
-                    <>
-                      <FormControl>
-                        <FormLabel>Email Address</FormLabel>
-                        <Input
-                          value={notificationSettings.emailAddress}
-                          onChange={(e) => handleNotificationChange('emailAddress', e.target.value)}
-                          placeholder="admin@example.com"
-                        />
-                        <FormHelperText>
-                          Email address to send notifications to
-                        </FormHelperText>
-                      </FormControl>
-                      
-                      <FormControl display="flex" alignItems="center">
-                        <Switch
-                          id="failure-only"
-                          isChecked={notificationSettings.failureNotificationsOnly}
-                          onChange={(e) => handleNotificationChange('failureNotificationsOnly', e.target.checked)}
-                          mr={3}
-                        />
-                        <FormLabel htmlFor="failure-only" mb="0">
-                          Only notify on failures
-                        </FormLabel>
-                      </FormControl>
-                    </>
-                  )}
-                  
-                  <Divider />
-                  
-                  <FormControl display="flex" alignItems="center">
-                    <Switch
-                      id="slack-notifications"
-                      isChecked={notificationSettings.slackNotifications}
-                      onChange={(e) => handleNotificationChange('slackNotifications', e.target.checked)}
-                      mr={3}
-                    />
-                    <FormLabel htmlFor="slack-notifications" mb="0">
-                      Enable Slack Notifications
-                    </FormLabel>
-                  </FormControl>
-                  
-                  {notificationSettings.slackNotifications && (
-                    <FormControl>
-                      <FormLabel>Slack Webhook URL</FormLabel>
-                      <Input
-                        value={notificationSettings.slackWebhook}
-                        onChange={(e) => handleNotificationChange('slackWebhook', e.target.value)}
-                        placeholder="https://hooks.slack.com/services/..."
-                      />
-                      <FormHelperText>
-                        Webhook URL for your Slack channel
-                      </FormHelperText>
-                    </FormControl>
-                  )}
-                  
-                  <Button
-                    colorScheme="blue"
-                    alignSelf="flex-start"
-                    onClick={() => handleSaveSettings('Notification')}
-                  >
-                    Save Notification Settings
-                  </Button>
-                </VStack>
-              </CardBody>
-            </Card>
-          </TabPanel>
-          
-          {/* Appearance Tab */}
-          <TabPanel px={0}>
-            <Card>
-              <CardHeader>
-                <Heading size="md">Appearance Settings</Heading>
-              </CardHeader>
-              <Divider />
-              <CardBody>
-                <VStack spacing={6} align="stretch">
-                  <FormControl display="flex" alignItems="center">
-                    <FormLabel htmlFor="color-mode" mb="0">
-                      Color Mode
-                    </FormLabel>
-                    <Switch
-                      id="color-mode"
-                      isChecked={colorMode === 'dark'}
-                      onChange={toggleColorMode}
-                      ml="auto"
-                    />
-                    <Text ml={2}>{colorMode === 'dark' ? 'Dark' : 'Light'}</Text>
-                  </FormControl>
-                  
-                  <FormControl>
-                    <FormLabel>Date Format</FormLabel>
-                    <Select defaultValue="localized">
-                      <option value="localized">Localized (browser default)</option>
-                      <option value="iso">ISO Format (YYYY-MM-DD HH:MM:SS)</option>
-                      <option value="us">US Format (MM/DD/YYYY hh:mm A)</option>
-                      <option value="eu">EU Format (DD/MM/YYYY HH:MM)</option>
-                    </Select>
-                    <FormHelperText>
-                      How dates should be displayed throughout the application
-                    </FormHelperText>
-                  </FormControl>
-                  
-                  <FormControl>
-                    <FormLabel>Time Zone</FormLabel>
-                    <Select defaultValue="local">
-                      <option value="local">Browser Local Time</option>
-                      <option value="utc">UTC</option>
-                      <option value="est">Eastern Time (ET)</option>
-                      <option value="pst">Pacific Time (PT)</option>
-                      <option value="ist">India Standard Time (IST)</option>
-                    </Select>
-                    <FormHelperText>
-                      Time zone for displaying dates and times
-                    </FormHelperText>
-                  </FormControl>
-                  
-                  <Button
-                    colorScheme="blue"
-                    alignSelf="flex-start"
-                    onClick={() => handleSaveSettings('Appearance')}
-                  >
-                    Save Appearance Settings
-                  </Button>
-                </VStack>
-              </CardBody>
-            </Card>
-          </TabPanel>
-        </TabPanels>
-      </Tabs>
+        {/* Pipeline Actions Menu */}
+        <Menu
+          anchorEl={actionMenuAnchor}
+          open={Boolean(actionMenuAnchor)}
+          onClose={handleCloseActionMenu}
+        >
+          <MenuItem 
+            onClick={handleExecutePipeline}
+            disabled={selectedPipeline?.status !== 'active'}
+          >
+            <ListItemIcon>
+              <PlayArrowIcon fontSize="small" />
+            </ListItemIcon>
+            Run Pipeline
+          </MenuItem>
+          <MenuItem onClick={handleEditPipeline}>
+            <ListItemIcon>
+              <EditIcon fontSize="small" />
+            </ListItemIcon>
+            Edit Pipeline
+          </MenuItem>
+          <Divider />
+          <MenuItem 
+            onClick={handleCloseActionMenu}
+            sx={{ color: 'error.main' }}
+          >
+            <ListItemIcon>
+              <DeleteIcon fontSize="small" color="error" />
+            </ListItemIcon>
+            Delete Pipeline
+          </MenuItem>
+        </Menu>
+      </Paper>
     </Box>
   );
 };
 
-export default Settings;
+export default PipelineList;

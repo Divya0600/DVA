@@ -3,175 +3,186 @@ import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   Box,
-  Flex,
-  Icon,
-  Text,
-  VStack,
+  Drawer,
   Divider,
-  useColorModeValue,
   IconButton,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
   Tooltip,
-} from '@chakra-ui/react';
+  Typography,
+  useTheme,
+  useMediaQuery
+} from '@mui/material';
 import {
-  FiHome,
-  FiActivity,
-  FiDatabase,
-  FiSettings,
-  FiInfo,
-  FiMenu,
-  FiX
-} from 'react-icons/fi';
+  ChevronLeft as ChevronLeftIcon,
+  Dashboard as DashboardIcon,
+  Sync as SyncIcon,
+  Task as TaskIcon,
+  Storage as StorageIcon,
+  Settings as SettingsIcon,
+  Help as HelpIcon,
+  Menu as MenuIcon
+} from '@mui/icons-material';
+
+// Drawer width
+const drawerWidth = 240;
 
 const Sidebar = () => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const theme = useTheme();
   const location = useLocation();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
-  // Colors
-  const bgColor = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
+  // Drawer open state (closed by default on mobile)
+  const [open, setOpen] = useState(!isMobile);
   
-  // Toggle sidebar collapse
-  const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed);
+  // Toggle drawer
+  const toggleDrawer = () => {
+    setOpen(!open);
   };
   
-  return (
-    <Box position="relative">
-      {/* Sidebar */}
-      <Box
-        as="nav"
-        h="100vh"
-        w={isCollapsed ? "70px" : "240px"}
-        bg={bgColor}
-        borderRight="1px"
-        borderRightColor={borderColor}
-        transition="width 0.3s ease"
-        position="relative"
-        zIndex="20" // Ensure sidebar stays above content
-      >
-        {/* Toggle Button */}
-        <IconButton
-          icon={isCollapsed ? <FiMenu /> : <FiX />}
-          variant="ghost"
-          position="absolute"
-          top="4"
-          right={isCollapsed ? "50%" : "4"}
-          transform={isCollapsed ? "translateX(50%)" : "none"}
-          onClick={toggleSidebar}
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          zIndex="1"
-        />
-        
-        {/* Logo/Header */}
-        <Flex h="20" alignItems="center" justifyContent="center" px={4}>
-          {!isCollapsed ? (
-            <Text fontSize="xl" fontWeight="bold" color="blue.500">
-              Pipeline Migration
-            </Text>
-          ) : (
-            <Text fontSize="xl" fontWeight="bold" color="blue.500">
-              PM
-            </Text>
-          )}
-        </Flex>
-        
-        <Divider mb={4} />
-        
-        {/* Navigation Items */}
-        <VStack spacing={1} align="stretch" px={2}>
-          <NavItem 
-            to="/dashboard" 
-            icon={FiHome} 
-            label="Dashboard" 
-            isCollapsed={isCollapsed} 
-            isActive={location.pathname === '/dashboard'} 
-          />
-          
-          <NavItem 
-            to="/pipelines" 
-            icon={FiActivity} 
-            label="Pipelines" 
-            isCollapsed={isCollapsed} 
-            isActive={location.pathname.startsWith('/pipelines')} 
-          />
-          
-          <NavItem 
-            to="/jobs" 
-            icon={FiActivity} 
-            label="Jobs" 
-            isCollapsed={isCollapsed} 
-            isActive={location.pathname.startsWith('/jobs')} 
-          />
-          
-          <NavItem 
-            to="/sources" 
-            icon={FiDatabase} 
-            label="Sources" 
-            isCollapsed={isCollapsed} 
-            isActive={location.pathname === '/sources'} 
-          />
-          
-          <NavItem 
-            to="/destinations" 
-            icon={FiDatabase} 
-            label="Destinations" 
-            isCollapsed={isCollapsed} 
-            isActive={location.pathname === '/destinations'} 
-          />
-          
-          <Divider my={4} />
-          
-          <NavItem 
-            to="/settings" 
-            icon={FiSettings} 
-            label="Settings" 
-            isCollapsed={isCollapsed} 
-            isActive={location.pathname === '/settings'} 
-          />
-          
-          <NavItem 
-            to="/help" 
-            icon={FiInfo} 
-            label="Help" 
-            isCollapsed={isCollapsed} 
-            isActive={location.pathname === '/help'} 
-          />
-        </VStack>
+  // Navigation items
+  const navItems = [
+    { path: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
+    { path: '/pipelines', label: 'Pipelines', icon: SyncIcon },
+    { path: '/jobs', label: 'Jobs', icon: TaskIcon },
+    { path: '/sources', label: 'Sources', icon: StorageIcon },
+    { path: '/destinations', label: 'Destinations', icon: StorageIcon },
+    { path: '/settings', label: 'Settings', icon: SettingsIcon },
+    { path: '/help', label: 'Help', icon: HelpIcon }
+  ];
+  
+  // Check if a nav item is active (exact match or startsWith for nested routes)
+  const isActive = (path) => {
+    if (path === '/dashboard') {
+      return location.pathname === path;
+    }
+    return location.pathname.startsWith(path);
+  };
+  
+  // Render drawer content
+  const drawerContent = (
+    <>
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between', 
+        padding: theme.spacing(0, 1),
+        ...theme.mixins.toolbar // necessary for content to be below app bar
+      }}>
+        {open ? (
+          <Typography variant="h6" sx={{ ml: 2, flexGrow: 1 }}>
+            Pipeline Migration
+          </Typography>
+        ) : (
+          <Typography variant="h6" sx={{ ml: 2, flexGrow: 1 }}>
+            PM
+          </Typography>
+        )}
+        <IconButton onClick={toggleDrawer}>
+          <ChevronLeftIcon />
+        </IconButton>
       </Box>
-    </Box>
+      
+      <Divider />
+      
+      <List component="nav">
+        {navItems.map((item) => (
+          <ListItem key={item.path} disablePadding>
+            <Tooltip title={!open ? item.label : ""} placement="right">
+              <ListItemButton
+                component={NavLink}
+                to={item.path}
+                selected={isActive(item.path)}
+                sx={{
+                  minHeight: 48,
+                  justifyContent: open ? 'initial' : 'center',
+                  px: 2.5,
+                  '&.Mui-selected': {
+                    bgcolor: 'primary.light',
+                    '&:hover': {
+                      bgcolor: 'primary.light',
+                    }
+                  }
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    minWidth: 0,
+                    mr: open ? 3 : 'auto',
+                    justifyContent: 'center',
+                    color: isActive(item.path) ? 'primary.main' : 'inherit'
+                  }}
+                >
+                  <item.icon />
+                </ListItemIcon>
+                {open && (
+                  <ListItemText 
+                    primary={item.label} 
+                    primaryTypographyProps={{ 
+                      fontWeight: isActive(item.path) ? 'bold' : 'regular'
+                    }} 
+                  />
+                )}
+              </ListItemButton>
+            </Tooltip>
+          </ListItem>
+        ))}
+      </List>
+    </>
   );
-};
-
-// Navigation Item Component
-const NavItem = ({ to, icon, label, isCollapsed, isActive }) => {
-  // Colors
-  const activeBg = useColorModeValue('blue.50', 'blue.900');
-  const activeColor = useColorModeValue('blue.600', 'blue.200');
-  const hoverBg = useColorModeValue('gray.100', 'gray.700');
+  
+  // Mobile drawer button (only visible when drawer is closed)
+  const mobileDrawerToggle = !open && isMobile && (
+    <IconButton
+      color="inherit"
+      aria-label="open drawer"
+      onClick={toggleDrawer}
+      edge="start"
+      sx={{
+        position: 'fixed',
+        bottom: 16,
+        left: 16,
+        zIndex: 1199,
+        bgcolor: 'primary.main',
+        color: 'primary.contrastText',
+        boxShadow: 2,
+        '&:hover': {
+          bgcolor: 'primary.dark',
+        },
+      }}
+    >
+      <MenuIcon />
+    </IconButton>
+  );
   
   return (
-    <Tooltip label={isCollapsed ? label : null} placement="right" hasArrow>
-      <Box as={NavLink} to={to} w="100%" _activeLink={{ textDecoration: 'none' }}>
-        <Flex
-          align="center"
-          p={3}
-          borderRadius="md"
-          role="group"
-          cursor="pointer"
-          bg={isActive ? activeBg : 'transparent'}
-          color={isActive ? activeColor : 'gray.500'}
-          _hover={{ bg: hoverBg, color: activeColor }}
-          transition="all 0.2s"
-        >
-          <Icon as={icon} boxSize={5} />
-          {!isCollapsed && (
-            <Text ml={4} fontWeight={isActive ? 'semibold' : 'medium'}>
-              {label}
-            </Text>
-          )}
-        </Flex>
-      </Box>
-    </Tooltip>
+    <>
+      <Drawer
+        variant={isMobile ? "temporary" : "permanent"}
+        open={open}
+        onClose={isMobile ? toggleDrawer : undefined}
+        sx={{
+          width: open ? drawerWidth : theme.spacing(7),
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
+            width: open ? drawerWidth : theme.spacing(7),
+            overflowX: 'hidden',
+            transition: theme.transitions.create('width', {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
+            boxSizing: 'border-box',
+          },
+        }}
+      >
+        {drawerContent}
+      </Drawer>
+      
+      {mobileDrawerToggle}
+    </>
   );
 };
 
